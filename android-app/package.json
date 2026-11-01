@@ -5,7 +5,7 @@
   "description": "Android app shell for Mailbox (Capacitor, FCM push, native Google sign-in)",
   "license": "MIT",
   "dependencies": {
-    "@capacitor/android": "^6.2.0",
+    "@capacitor/android": "^6.2.3",
     "@capacitor/cli": "^6.2.0",
     "@capacitor/core": "^6.2.0",
     "@capacitor/push-notifications": "^6.0.0",
