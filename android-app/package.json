@@ -7,7 +7,7 @@
   "dependencies": {
     "@capacitor/android": "^6.2.0",
     "@capacitor/cli": "^6.2.0",
-    "@capacitor/core": "^6.2.0",
+    "@capacitor/core": "^6.2.3",
     "@capacitor/push-notifications": "^6.0.0",
     "@capacitor-firebase/authentication": "^6.3.0",
     "firebase": "^10.14.0"
