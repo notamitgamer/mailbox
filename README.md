@@ -9,9 +9,9 @@
 </p>
 
 <p align="center">
-  <a href="LICENSE"><img alt="License: MIT" src="https://img.shields.io/badge/license-MIT-d0bcff?labelColor=141316"></a>
-  <img alt="Node.js 18 or newer" src="https://img.shields.io/badge/node-%3E%3D18-d0bcff?labelColor=141316">
-  <a href="https://docs.amit.is-a.dev/mailbox"><img alt="Documentation" src="https://img.shields.io/badge/docs-read-d0bcff?labelColor=141316"></a>
+  <a href="LICENSE"><img alt="License: MIT" src="https://img.shields.io/badge/license-MIT-4fd1b5?labelColor=121416"></a>
+  <img alt="Node.js 18 or newer" src="https://img.shields.io/badge/node-%3E%3D18-4fd1b5?labelColor=121416">
+  <a href="https://docs.amit.is-a.dev/mailbox"><img alt="Documentation" src="https://img.shields.io/badge/docs-read-4fd1b5?labelColor=121416"></a>
 </p>
 
 [Resend](https://resend.com) receives the mail, the server stores it in [Firebase Firestore](https://firebase.google.com/docs/firestore), and an installable web app lets you read, reply, forward and send, with push notifications for new mail. Nothing is forwarded to a third-party inbox.

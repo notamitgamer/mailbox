@@ -558,7 +558,7 @@ const CLEAN = { WHOLE_DOCUMENT: true, FORBID_TAGS: ['meta', 'base', 'link', 'for
 const FRAME_CSP = `<meta http-equiv="Content-Security-Policy" content="default-src 'none'; img-src https: data:; style-src 'unsafe-inline'; font-src https: data:"><base target="_blank">`;
 const FRAME_BASE = 'body{margin:0;padding:12px 4px;font:14px/1.5 -apple-system,Segoe UI,Roboto,Arial,sans-serif;word-wrap:break-word;overflow-x:auto}img{max-width:100%;height:auto}';
 const FRAME_LIGHT = `${FRAME_CSP}<style>html{background:#fff}${FRAME_BASE}body{color:#202124}a{color:#1a56db}</style>`;
-const FRAME_DARK = `${FRAME_CSP}<style>html{background:transparent;color-scheme:dark}${FRAME_BASE}body{color:#e6e1e5}a{color:#d0bcff}</style>`;
+const FRAME_DARK = `${FRAME_CSP}<style>html{background:transparent;color-scheme:dark}${FRAME_BASE}body{color:#e6e8ea}a{color:#4fd1b5}</style>`;
 
 // Phone back button / swipe: every screen layered on top of the list (reader, sidebar, compose, popups, a
 // folder other than Inbox, the unread filter, search) is a "layer" with its own history entry, so back closes
@@ -688,6 +688,15 @@ function renderBody(m) {
   frame.srcdoc = /<head[^>]*>/i.test(doc) ? doc.replace(/<head[^>]*>/i, (t) => t + fh) : fh + doc;
   frame.addEventListener('load', () => {
     try { frame.style.height = frame.contentDocument.documentElement.scrollHeight + 'px'; } catch (e) { /* ignore */ }
+    // Open web links from the top page: popups from a sandboxed frame are unreliable in the Android WebView.
+    try {
+      frame.contentDocument.addEventListener('click', (ev) => {
+        const a = ev.target && ev.target.closest ? ev.target.closest('a[href]') : null;
+        if (!a || !/^https?:\/\//i.test(a.href)) return;
+        ev.preventDefault();
+        window.open(a.href, '_blank', 'noopener,noreferrer');
+      });
+    } catch (e) { /* ignore */ }
     mc.update();
   });
   $('#rBody').empty().append(frame);
