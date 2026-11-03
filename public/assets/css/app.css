@@ -580,3 +580,26 @@ html { touch-action: manipulation; }
 .cs-item { padding: 10px 12px; border-radius: 8px; font-size: 14px; cursor: pointer; }
 .cs-item:hover, .cs-item:focus { background: var(--surface1); }
 .cs-item.on { color: var(--peach); font-weight: 500; }
+
+/* ---- selected row, unread dot, sender colours (graphite + teal) ---- */
+/* Selected (open) mail: soft teal tint with a bar on the left edge */
+.mail-item.active { background: rgba(79, 209, 181, .10); box-shadow: inset 3px 0 0 var(--peach); }
+.mail-item.active .mail-subject, .mail-item.active .mail-sender { color: var(--text); }
+@media (hover: hover) { .mail-item.active:hover { background: rgba(79, 209, 181, .14); } }
+
+/* Unread dot next to the time (the row has no room for a separate marker) */
+.mail-item.unread .mail-time { display: inline-flex; align-items: center; flex: none; }
+.mail-item.unread .mail-time::before {
+  content: ''; width: 8px; height: 8px; margin-right: 6px; border-radius: 50%; flex: none;
+  background: var(--peach); box-shadow: 0 0 0 3px rgba(79, 209, 181, .18);
+}
+
+/* Sender avatars: muted tones that sit well on graphite, all with white text above 4.5:1 contrast */
+.mail-avatar span.green, #rAvatar.green { background: #2f855a; }
+.mail-avatar span.blue, #rAvatar.blue { background: #2b6cb0; }
+.mail-avatar span.indigo, #rAvatar.indigo { background: #5a67d8; }
+.mail-avatar span.red, #rAvatar.red { background: #c0392b; }
+.mail-avatar span.yellow, #rAvatar.yellow { background: #a16207; }
+.mail-avatar span.pink, #rAvatar.pink { background: #b83280; }
+.mail-avatar span.purple, #rAvatar.purple { background: #7c4dbd; }
+.mail-avatar span.slate, #rAvatar.slate { background: #4a5568; }
