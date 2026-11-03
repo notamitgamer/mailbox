@@ -583,6 +583,8 @@ function undoLayer(name) { // put the screen back the way it was without this la
   else if (name === 'list') closeCsList(true);
   else if (name === 'folder') $('#folders .nav-link[data-folder="inbox"]').trigger('click');
   else if (name === 'filter') setFilter('all');
+  else if (name === 'fab') closeFabUi();
+  else if (name === 'split') closeSplitUi();
   else if (name === 'search') { $('#search').val('').trigger('input').trigger('blur'); $('.mailbox-header').removeClass('searching'); }
 }
 function pushLayer(name) { layers.push(name); sync(); }
@@ -863,7 +865,7 @@ function renderReader(m) {
   $('#rFrom').html(sent ? `Me <span>&lt;${esc(m.from)}&gt;</span>` : `${esc(p.name || p.addr)}${p.name ? ` <span>&lt;${esc(p.addr)}&gt;</span>` : ''}`);
   $('#rTo').text('to: ' + m.to.join(', ') + ((m.cc || []).length ? ' · cc: ' + m.cc.join(', ') : '') + ((m.bcc || []).length ? ' · bcc: ' + m.bcc.join(', ') : ''));
   $('#rTime').text(fullDate(m.date));
-  $('#btnReplyTop, #btnReply').toggleClass('d-none', !inbox);
+  $('#btnReplyTop, #btnReply, #replySplit').toggleClass('d-none', !inbox);
   $('#mnReply, #mnUnread, #btnUnreadTop').toggleClass('d-none', !inbox);
   $('#btnFwdTop, #btnForward, #mnForward').toggleClass('d-none', trash);
   $('#btnRestoreTop, #mnRestore').toggleClass('d-none', !trash);
@@ -1167,17 +1169,25 @@ async function editDraft(id) {
   });
 }
 
-function startReply() {
+function startReply(all) {
   const m = state.openMail;
   if (!m || state.folder !== 'inbox') return;
   const p = parseAddr(m.from);
   const quote = plain(m).slice(0, 2000).split('\n').map((l) => '> ' + l).join('\n');
+  let to = p.addr; let cc = [];
+  if (all === true) { // everyone on the mail except the sender (already first) and your own addresses
+    const mine = new Set((config.aliases || []).map((a) => String(a).toLowerCase()));
+    const seen = new Set([String(p.addr).toLowerCase()]);
+    const others = (list) => asList(list).map((x) => parseAddr(x).addr)
+      .filter((a) => a && !mine.has(a.toLowerCase()) && !seen.has(a.toLowerCase()) && seen.add(a.toLowerCase()));
+    to = [p.addr, ...others(m.to)]; cc = others(m.cc);
+  }
   openCompose({
-    to: p.addr,
+    to, cc,
     subject: /^re:/i.test(m.subject) ? m.subject : 'Re: ' + m.subject,
     body: `\n\nOn ${fullDate(m.date)}, ${p.name || p.addr} wrote:\n${quote}`,
     replyToId: m.id,
-    title: 'Reply',
+    title: all === true ? 'Reply all' : 'Reply',
   });
 }
 
@@ -1702,7 +1712,36 @@ $('.mailbox-menu').on('click', (e) => {
 });
 $('.backdrop').on('click', () => closeLayer('side'));
 $('.mailbox-search .form-control').on('focusin focusout', function (e) { $(this).parent().toggleClass('onfocus', e.type === 'focusin'); });
-$('.menu-compose').on('click', (e) => { e.preventDefault(); openCompose(); });
+// ---- Material 3: FAB menu (the compose button opens more actions) and split reply button ----
+function closeFabUi() { $('#fabMenu, #fabScrim, .menu-compose').removeClass('open'); $('.menu-compose').attr('aria-expanded', 'false'); }
+function closeSplitUi() { $('#splitMenu').removeClass('open'); $('#btnSplitMore').attr('aria-expanded', 'false'); }
+$('.menu-compose').on('click', (e) => {
+  e.preventDefault();
+  if ($('#fabMenu').hasClass('open')) return closeLayer('fab');
+  $('#fabMenu, #fabScrim, .menu-compose').addClass('open'); $('.menu-compose').attr('aria-expanded', 'true');
+  pushLayer('fab');
+});
+$('#fabScrim').on('click', () => closeLayer('fab'));
+$('#fabMenu').on('click', '[data-act]', function (e) {
+  e.preventDefault(); const act = this.dataset.act; closeLayer('fab');
+  if (act === 'compose') openCompose();
+  else if (act === 'drafts') $('#folders .nav-link[data-folder="drafts"]').trigger('click');
+  else if (act === 'templates') $('#navTemplates').trigger('click');
+});
+$('#btnSplitMore').on('click', (e) => {
+  e.preventDefault(); e.stopPropagation();
+  if ($('#splitMenu').hasClass('open')) return closeLayer('split');
+  $('#splitMenu').addClass('open'); $('#btnSplitMore').attr('aria-expanded', 'true'); pushLayer('split');
+});
+$(document).on('click', (e) => { if ($('#splitMenu').hasClass('open') && !$(e.target).closest('#replySplit').length) closeLayer('split'); });
+$('#splitMenu').on('click', '[data-act]', function (e) {
+  e.preventDefault(); const act = this.dataset.act; closeLayer('split');
+  if (act === 'all') startReply(true); else if (act === 'forward') $('#btnForward').trigger('click');
+});
+$(document).on('keydown', (e) => {
+  if (e.key !== 'Escape') return;
+  if ($('#fabMenu').hasClass('open')) closeLayer('fab'); else if ($('#splitMenu').hasClass('open')) closeLayer('split');
+});
 $('.compose-title, .nav-link-minimize').on('click', function (e) { e.preventDefault(); $(this).closest('.compose').toggleClass('minimize'); });
 $('.nav-link-fullscreen').on('click', function (e) { e.preventDefault(); $(this).closest('.compose').toggleClass('fullscreen'); });
 $('.nav-link-close').on('click', async (e) => { e.preventDefault(); const saved = await saveDraft(); closeCompose(); if (saved) toast('Draft saved'); });

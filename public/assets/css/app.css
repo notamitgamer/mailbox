@@ -668,3 +668,136 @@ html { -webkit-font-smoothing: antialiased; -moz-osx-font-smoothing: grayscale; 
 /* menus and dialogs: rounder, with a clear edge */
 .dropdown-menu, .modal-content { border-radius: 16px; border: 1px solid rgba(230, 232, 234, .08); box-shadow: 0 12px 32px rgba(0, 0, 0, .55); }
 .mail-item .mail-time { margin-left: 12px; flex: none; white-space: nowrap; }
+
+
+/* =====================================================================
+   Material 3 (dark scheme, seed #4fd1b5). Token layer first, then components.
+   Appended on top of the existing styles; nothing above was rewritten.
+   ===================================================================== */
+:root {
+  /* colour roles */
+  --md-primary: #4fd1b5; --md-on-primary: #00382e;
+  --md-primary-container: #005143; --md-on-primary-container: #7ff0d3;
+  --md-secondary-container: #22403a; --md-on-secondary-container: #cce8e0;
+  --md-surface: #121416; --md-surface-container-lowest: #0d0f10; --md-surface-container-low: #171a1c;
+  --md-surface-container: #1b1e21; --md-surface-container-high: #25292c; --md-surface-container-highest: #303437;
+  --md-on-surface: #e6e8ea; --md-on-surface-variant: #bcc7c3;
+  --md-outline: #869390; --md-outline-variant: #3d4946;
+  --md-inverse-surface: #e1e3e5; --md-inverse-on-surface: #2e3133;
+  /* elevation (tonal surface + soft shadow) */
+  --md-elev-1: 0 1px 2px rgba(0, 0, 0, .45), 0 1px 3px 1px rgba(0, 0, 0, .25);
+  --md-elev-2: 0 1px 2px rgba(0, 0, 0, .45), 0 2px 6px 2px rgba(0, 0, 0, .25);
+  --md-elev-3: 0 4px 8px 3px rgba(0, 0, 0, .3), 0 1px 3px rgba(0, 0, 0, .45);
+  /* motion */
+  --md-ease: cubic-bezier(.2, 0, 0, 1); --md-ease-decel: cubic-bezier(.05, .7, .1, 1); --md-ease-accel: cubic-bezier(.3, 0, .8, .15);
+  /* the older names used all over this file now follow the M3 surface levels */
+  --crust: var(--md-surface-container-lowest); --mantle: var(--md-surface-container-low);
+  --surface0: var(--md-surface-container); --surface1: var(--md-surface-container-high); --surface2: var(--md-surface-container-highest);
+}
+
+/* state layers: one overlay for hover (8%) and press (12%) on every button */
+.btn:hover, .btn:focus-visible { box-shadow: inset 0 0 0 999px rgba(230, 232, 234, .08); }
+.btn:active { box-shadow: inset 0 0 0 999px rgba(230, 232, 234, .12); }
+.btn-primary:hover, .btn-primary:focus-visible { background-color: var(--md-primary); }
+
+/* buttons: filled, tonal and outlined, all fully rounded and 40px tall */
+.btn { border-radius: 20px; min-height: 40px; font-weight: 500; letter-spacing: .01em; }
+.btn-primary { background-color: var(--md-primary); border-color: var(--md-primary); color: var(--md-on-primary); }
+.btn-secondary { background-color: var(--md-secondary-container); border-color: transparent; color: var(--md-on-secondary-container); }
+.btn-ghost, .btn-outline-primary { background: transparent; border: 1px solid var(--md-outline); color: var(--md-primary); }
+.mailcontent-footer .btn { border-radius: 20px; padding: 0 20px; }
+
+/* split button: Reply | chevron, joined with a 2px gap and small inner corners */
+.split-btn { position: relative; display: inline-flex; gap: 2px; }
+.mailcontent-footer .split-btn .split-lead { border-radius: 20px 4px 4px 20px; }
+.mailcontent-footer .split-btn .split-trail { border-radius: 4px 20px 20px 4px; padding: 0 12px; display: inline-flex; align-items: center; justify-content: center; }
+.split-trail i { font-size: 20px; transition: transform .3s var(--md-ease); }
+.split-trail[aria-expanded="true"] i { transform: rotate(180deg); }
+.split-menu {
+  position: absolute; left: 0; bottom: calc(100% + 8px); z-index: 30; min-width: 200px; padding: 8px 0;
+  background: var(--md-surface-container); border-radius: 12px; box-shadow: var(--md-elev-2);
+  visibility: hidden; opacity: 0; transform: translateY(8px) scale(.96); transform-origin: bottom left;
+  transition: opacity .15s var(--md-ease-accel), transform .2s var(--md-ease-accel), visibility 0s linear .2s;
+}
+.split-menu.open { visibility: visible; opacity: 1; transform: none; transition: opacity .2s var(--md-ease-decel), transform .3s var(--md-ease-decel), visibility 0s; }
+.split-menu a { display: flex; align-items: center; gap: 12px; height: 48px; padding: 0 16px; color: var(--md-on-surface); text-decoration: none; font-size: 15px; }
+.split-menu a i { font-size: 20px; color: var(--md-on-surface-variant); }
+.split-menu a:hover, .split-menu a:focus-visible { background: rgba(230, 232, 234, .08); color: var(--md-on-surface); }
+.split-menu a:active { background: rgba(230, 232, 234, .12); }
+
+/* FAB: 16px corners, tonal elevation; tapping it opens the FAB menu */
+.menu-compose { border-radius: 16px; box-shadow: var(--md-elev-3); transition: transform .2s var(--md-ease), opacity .2s var(--md-ease), border-radius .3s var(--md-ease), background-color .2s; }
+.menu-compose i { transition: transform .3s var(--md-ease), opacity .2s linear; }
+.menu-compose .fab-close { position: absolute; opacity: 0; transform: rotate(-90deg); }
+.menu-compose.open { border-radius: 28px; }
+.menu-compose.open .ri-pencil-line { opacity: 0; transform: rotate(90deg); }
+.menu-compose.open .fab-close { opacity: 1; transform: none; }
+.fab-scrim { position: fixed; inset: 0; z-index: 790; background: rgba(0, 0, 0, .5); opacity: 0; pointer-events: none; transition: opacity .25s var(--md-ease); }
+.fab-scrim.open { opacity: 1; pointer-events: auto; }
+.fab-menu {
+  position: fixed; z-index: 801; display: flex; flex-direction: column; align-items: flex-end; gap: 8px;
+  right: calc(15px + env(safe-area-inset-right)); bottom: calc(15px + 56px + 16px + env(safe-area-inset-bottom));
+  visibility: hidden; transition: visibility 0s linear .3s;
+}
+.fab-menu.open { visibility: visible; transition: visibility 0s; }
+.fab-menu button {
+  display: inline-flex; align-items: center; gap: 12px; height: 56px; padding: 0 24px 0 16px; border: 0; border-radius: 28px;
+  background: var(--md-primary-container); color: var(--md-on-primary-container); font: 500 15px/1 inherit; font-family: inherit; box-shadow: var(--md-elev-2);
+  opacity: 0; transform: translateY(20px) scale(.8); transform-origin: bottom right; cursor: pointer; -webkit-tap-highlight-color: transparent;
+  transition: opacity .15s var(--md-ease-accel), transform .2s var(--md-ease-accel);
+}
+.fab-menu button i { font-size: 22px; }
+.fab-menu button:hover, .fab-menu button:focus-visible { box-shadow: var(--md-elev-2), inset 0 0 0 999px rgba(127, 240, 211, .08); }
+.fab-menu button:active { box-shadow: var(--md-elev-2), inset 0 0 0 999px rgba(127, 240, 211, .14); }
+.fab-menu.open button { opacity: 1; transform: none; transition: opacity .25s linear, transform .4s var(--md-ease-decel); }
+.fab-menu.open button:nth-last-child(1) { transition-delay: 0s; }
+.fab-menu.open button:nth-last-child(2) { transition-delay: .04s; }
+.fab-menu.open button:nth-last-child(3) { transition-delay: .08s; }
+@media (min-width: 768px) { .fab-menu { right: calc(25px + env(safe-area-inset-right)); bottom: calc(25px + 56px + 16px + env(safe-area-inset-bottom)); } }
+
+/* rows: solid state colours (the inline style in index.html forces an opaque row background, so these must be !important) */
+.mail-group .mail-row .mail-item { transition: background-color .2s var(--md-ease); }
+@media (hover: hover) { .mail-group .mail-row .mail-item:hover { background-color: var(--md-surface-container) !important; } }
+.mail-group .mail-row .mail-item:active { background-color: var(--md-surface-container-high) !important; }
+.mail-group .mail-row .mail-item.active, .mail-group .mail-row .mail-item.active:hover { background-color: var(--md-secondary-container) !important; box-shadow: none; }
+.mail-item.active .mail-subject, .mail-item.active .mail-sender, .mail-item.active .mail-time { color: var(--md-on-secondary-container); }
+.mail-item.active .mail-text { color: var(--md-on-surface-variant); }
+
+/* section labels: M3 title-small, sentence case */
+.mail-day { text-transform: none; letter-spacing: .1px; font-size: 14px; font-weight: 500; color: var(--md-on-surface-variant); }
+
+/* navigation drawer: the current folder is a full-width pill in the secondary container colour */
+.sidebar-body .nav-link { font-weight: 500; letter-spacing: .1px; }
+.sidebar-body .nav-link.active { color: var(--md-on-secondary-container); }
+.sidebar-body .nav-link::before, .sidebar-body .nav-link.active::before { border-radius: 28px; }
+.sidebar-body .nav-link.active::before { background-color: var(--md-secondary-container); }
+.sidebar { border-right-color: transparent; border-radius: 0 16px 16px 0; background-color: var(--md-surface-container-low); }
+
+/* top app bar and search bar */
+.mailbox-header .appbar-title { font-size: 24px; font-weight: 400; letter-spacing: 0; }
+.mailbox-search { border-radius: 28px; background-color: var(--md-surface-container-high); border-color: transparent; }
+.mailbox-header .mailbox-search.onfocus { background-color: var(--md-surface-container-highest); border-color: transparent; box-shadow: none; }
+.mailbox-search .form-control:focus, .mailbox-header .mailbox-search .form-control:focus { border-color: transparent; box-shadow: none; }
+
+/* filter chip (M3 filter chip, selected) */
+.filter-chip { border: 0; border-radius: 8px; background: var(--md-secondary-container); color: var(--md-on-secondary-container); }
+
+/* avatars: flat tonal circles (container colour with a light on-container letter) */
+.mail-avatar span, #rAvatar { background-image: none; box-shadow: none; font-weight: 500; }
+.mail-avatar span.green, #rAvatar.green { background-color: #1e4d3c; color: #a7f0cb; }
+.mail-avatar span.blue, #rAvatar.blue { background-color: #1f3f66; color: #b5d4ff; }
+.mail-avatar span.indigo, #rAvatar.indigo { background-color: #2f3a73; color: #c4cbff; }
+.mail-avatar span.red, #rAvatar.red { background-color: #6a2c28; color: #ffd3cf; }
+.mail-avatar span.yellow, #rAvatar.yellow { background-color: #5c4510; color: #ffe08f; }
+.mail-avatar span.pink, #rAvatar.pink { background-color: #66264a; color: #ffd0e6; }
+.mail-avatar span.purple, #rAvatar.purple { background-color: #4a3270; color: #e6d3ff; }
+.mail-avatar span.slate, #rAvatar.slate { background-color: #3a4650; color: #d3dde6; }
+
+/* dialogs (28px), menus (12px), snackbar (4px, inverse surface, lifted above the FAB) */
+.modal-content { border-radius: 28px; background-color: var(--md-surface-container-high); border-color: transparent; box-shadow: var(--md-elev-3); }
+.dropdown-menu { border-radius: 12px; background-color: var(--md-surface-container); border-color: transparent; box-shadow: var(--md-elev-2); }
+.toast-msg { background: var(--md-inverse-surface); color: var(--md-inverse-on-surface); border-radius: 4px; padding: 14px 16px; font-size: 14px; box-shadow: var(--md-elev-3); max-width: calc(100vw - 32px); bottom: calc(88px + env(safe-area-inset-bottom)); transition: opacity .2s var(--md-ease); }
+@media (prefers-reduced-motion: reduce) { .menu-compose, .menu-compose i, .fab-scrim, .fab-menu button, .split-menu, .split-trail i { transition: none !important; } }
+/* keep tonal and outlined buttons in their M3 colours on hover and focus (older rules recoloured them) */
+.btn-secondary:hover, .btn-secondary:focus, .btn-secondary:active { background-color: var(--md-secondary-container); border-color: transparent; color: var(--md-on-secondary-container); }
+.btn-ghost:hover, .btn-ghost:focus, .btn-outline-primary:hover, .btn-outline-primary:focus { background: transparent; border-color: var(--md-outline); color: var(--md-primary); }

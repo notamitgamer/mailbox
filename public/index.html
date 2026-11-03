@@ -249,7 +249,14 @@
         </div>
       </div>
       <div class="mailcontent-footer d-none">
-        <a href="#" id="btnReply" class="btn btn-secondary btn-icontext"><i class="ri-reply-line me-1"></i> Reply</a>
+        <div id="replySplit" class="split-btn">
+          <a href="#" id="btnReply" class="btn btn-secondary btn-icontext split-lead"><i class="ri-reply-line me-1"></i> Reply</a>
+          <a href="#" id="btnSplitMore" class="btn btn-secondary split-trail" role="button" aria-haspopup="menu" aria-expanded="false" aria-controls="splitMenu" title="More reply options" aria-label="More reply options"><i class="ri-arrow-down-s-line" aria-hidden="true"></i></a>
+          <div id="splitMenu" class="split-menu" role="menu">
+            <a href="#" id="btnReplyAll" role="menuitem" data-act="all"><i class="ri-reply-all-line" aria-hidden="true"></i> Reply all</a>
+            <a href="#" role="menuitem" data-act="forward"><i class="ri-share-forward-line" aria-hidden="true"></i> Forward</a>
+          </div>
+        </div>
         <a href="#" id="btnForward" class="btn btn-ghost btn-icontext"><i class="ri-share-forward-line me-1"></i> Forward</a>
       </div>
       <div class="mailcontent-placeholder">
@@ -258,8 +265,15 @@
       </div>
     </div>
 
-    <a href="#" class="menu-compose" role="button" title="New message" aria-label="New message">
+    <div id="fabScrim" class="fab-scrim" aria-hidden="true"></div>
+    <div id="fabMenu" class="fab-menu" role="menu" aria-label="Create">
+      <button type="button" role="menuitem" data-act="templates"><i class="ri-layout-top-line" aria-hidden="true"></i><span>Templates</span></button>
+      <button type="button" role="menuitem" data-act="drafts"><i class="ri-draft-line" aria-hidden="true"></i><span>Drafts</span></button>
+      <button type="button" role="menuitem" data-act="compose"><i class="ri-edit-2-line" aria-hidden="true"></i><span>New message</span></button>
+    </div>
+    <a href="#" class="menu-compose" role="button" title="New message" aria-label="New message" aria-haspopup="menu" aria-expanded="false" aria-controls="fabMenu">
       <i class="ri-pencil-line" aria-hidden="true"></i>
+      <i class="ri-close-line fab-close" aria-hidden="true"></i>
     </a>
 
     <div class="compose d-none" role="dialog" aria-label="Compose message">
