@@ -45,7 +45,7 @@ jobs:
           cp -r native/res/. "$src/res/"
           python3 patch_manifest.py "$src/AndroidManifest.xml"
           # Launch background in the app colour instead of white.
-          printf '<?xml version="1.0" encoding="utf-8"?><resources><color name="mail_bg">#FF141316</color></resources>' > "$src/res/values/mail_colors.xml"
+          printf '<?xml version="1.0" encoding="utf-8"?><resources><color name="mail_bg">#FF121416</color></resources>' > "$src/res/values/mail_colors.xml"
           sed -i 's#@drawable/splash#@color/mail_bg#' "$src/res/values/styles.xml"
           # Package Google Play's sign-in library with the Firebase auth plugin (without it the app crashes at launch).
           sed -i 's/^ext {/ext {\n    rgcfaIncludeGoogle = true/' android/variables.gradle

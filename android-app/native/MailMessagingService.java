@@ -45,7 +45,7 @@ public class MailMessagingService extends FirebaseMessagingService {
     int flags = PendingIntent.FLAG_IMMUTABLE | PendingIntent.FLAG_UPDATE_CURRENT;
     NotificationCompat.Builder b = new NotificationCompat.Builder(this, CHANNEL)
         .setSmallIcon(R.drawable.ic_stat_mail)
-        .setColor(0xFFD0BCFF)
+        .setColor(0xFF4FD1B5)
         .setContentTitle(title)
         .setContentText(body)
         .setStyle(new NotificationCompat.BigTextStyle().bigText(body))
@@ -67,7 +67,7 @@ public class MailMessagingService extends FirebaseMessagingService {
     if (active >= 2) {
       NotificationCompat.Builder s = new NotificationCompat.Builder(this, CHANNEL)
           .setSmallIcon(R.drawable.ic_stat_mail)
-          .setColor(0xFFD0BCFF)
+          .setColor(0xFF4FD1B5)
           .setContentTitle(active + " new mails")
           .setStyle(new NotificationCompat.InboxStyle().setSummaryText(active + " new mails"))
           .setGroup(GROUP)
