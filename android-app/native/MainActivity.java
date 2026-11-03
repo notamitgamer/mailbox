@@ -43,8 +43,8 @@ public class MainActivity extends BridgeActivity {
   @Override
   public void onCreate(Bundle savedInstanceState) {
     super.onCreate(savedInstanceState);
-    getWindow().setStatusBarColor(0xFF141316);
-    getWindow().setNavigationBarColor(0xFF141316);
+    getWindow().setStatusBarColor(0xFF121416);
+    getWindow().setNavigationBarColor(0xFF121416);
 
     // Request highest refresh rate (e.g. 120 Hz)
     Display display = getWindowManager().getDefaultDisplay();
@@ -144,7 +144,7 @@ public class MainActivity extends BridgeActivity {
    */
   private void showSplash() {
     splash = new FrameLayout(this);
-    splash.setBackgroundColor(0xFF141316);
+    splash.setBackgroundColor(0xFF121416);
 
     // Centered container holding the animated icon view and brand title
     LinearLayout centerLayout = new LinearLayout(this);
@@ -169,7 +169,7 @@ public class MainActivity extends BridgeActivity {
     final TextView tvBrand = new TextView(this);
     tvBrand.setText("Mailbox");
     tvBrand.setTextSize(18f);
-    tvBrand.setTextColor(0xFFE5E1E6);
+    tvBrand.setTextColor(0xFFE6E8EA);
     tvBrand.setTypeface(android.graphics.Typeface.create("sans-serif-medium", android.graphics.Typeface.NORMAL));
     tvBrand.setGravity(Gravity.CENTER);
     footer.addView(tvBrand, new LinearLayout.LayoutParams(
@@ -180,7 +180,7 @@ public class MainActivity extends BridgeActivity {
         + "Edited and maintained by notamitgamer.\n\n"
         + "\u00A9 2026\u2013present notamitgamer \u00B7 mail.amit.is-a.dev");
     tvCredit.setTextSize(12f);
-    tvCredit.setTextColor(0xFF938F99);
+    tvCredit.setTextColor(0xFF8D949A);
     tvCredit.setGravity(Gravity.CENTER);
     tvCredit.setLineSpacing(0f, 1.3f);
     LinearLayout.LayoutParams creditParams = new LinearLayout.LayoutParams(
@@ -320,10 +320,10 @@ public class MainActivity extends BridgeActivity {
       rawFlap.transform(m2, flapPath);
 
       pocketPaint.setStyle(Paint.Style.FILL);
-      pocketPaint.setColor(0xFFCFBBFE);
+      pocketPaint.setColor(0xFF4FD1B5);
 
       flapPaint.setStyle(Paint.Style.FILL);
-      flapPaint.setColor(0xFFCFBBFE);
+      flapPaint.setColor(0xFF4FD1B5);
 
       gleamPaint.setStyle(Paint.Style.FILL);
     }
@@ -374,7 +374,7 @@ public class MainActivity extends BridgeActivity {
         // Chevron ^ enters flipped upright (-180deg) from -50dp above
         float flapOffsetY = (1f - eased) * (-50f * getResources().getDisplayMetrics().density);
         flapPaint.setAlpha((int) (eased * 255));
-        flapPaint.setColor(0xFF9A81D4); // Soft backface lighting tone
+        flapPaint.setColor(0xFF3A9C88); // Soft backface lighting tone
 
         canvas.save();
         canvas.translate(0, flapOffsetY);
@@ -411,9 +411,9 @@ public class MainActivity extends BridgeActivity {
 
         // Shading based on orientation
         if (rotX < -90f) {
-          flapPaint.setColor(0xFF9A81D4);
+          flapPaint.setColor(0xFF3A9C88);
         } else {
-          flapPaint.setColor(0xFFCFBBFE);
+          flapPaint.setColor(0xFF4FD1B5);
         }
 
         canvas.save();
@@ -436,7 +436,7 @@ public class MainActivity extends BridgeActivity {
       else {
         pocketPaint.setAlpha(255);
         flapPaint.setAlpha(255);
-        flapPaint.setColor(0xFFCFBBFE);
+        flapPaint.setColor(0xFF4FD1B5);
 
         // Draw flat resting pocket and flap
         canvas.save();
