@@ -619,3 +619,10 @@ html { touch-action: manipulation; }
   .mailcontent-show .menu-compose { transform: translateY(24px) scale(.9); opacity: 0; pointer-events: none; }
 }
 @media (prefers-reduced-motion: reduce) { .menu-compose, .mail-item { transition: none; } }
+
+/* ---- no light line at the edge of the list while the reader slides in ---- */
+/* The scrollbar rail had a light translucent background; only the thumb should show, and never while the list is sliding away */
+.ps__rail-y { background: transparent !important; }
+@media (max-width: 1199.98px) {
+  .mailcontent-show .mailbox .ps__rail-y { opacity: 0 !important; transition: none; }
+}
