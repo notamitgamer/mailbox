@@ -556,7 +556,7 @@ async function loadMore() {
 // ---------- reader ----------
 const CLEAN = { WHOLE_DOCUMENT: true, FORBID_TAGS: ['meta', 'base', 'link', 'form', 'iframe', 'object', 'embed', 'script'] };
 const FRAME_CSP = `<meta http-equiv="Content-Security-Policy" content="default-src 'none'; img-src https: data:; style-src 'unsafe-inline'; font-src https: data:"><base target="_blank">`;
-const FRAME_BASE = 'body{margin:0;padding:12px 4px;font:14px/1.5 -apple-system,Segoe UI,Roboto,Arial,sans-serif;word-wrap:break-word;overflow-x:auto}img{max-width:100%;height:auto}';
+const FRAME_BASE = 'body{margin:0;padding:12px 4px;font:14px/1.5 -apple-system,Segoe UI,Roboto,Arial,sans-serif;word-wrap:break-word;overflow-x:auto}img{max-width:100%!important;height:auto!important}table{max-width:100%}';
 const FRAME_LIGHT = `${FRAME_CSP}<style>html{background:#fff}${FRAME_BASE}body{color:#202124}a{color:#1a56db}</style>`;
 const FRAME_DARK = `${FRAME_CSP}<style>html{background:transparent;color-scheme:dark}${FRAME_BASE}body{color:#e6e8ea}a{color:#4fd1b5}</style>`;
 
@@ -701,6 +701,14 @@ function renderBody(m) {
   frame.srcdoc = /<head[^>]*>/i.test(doc) ? doc.replace(/<head[^>]*>/i, (t) => t + fh) : fh + doc;
   frame.addEventListener('load', () => {
     fitFrame(frame);
+    // Images can finish loading after the frame's load event; refit whenever one does.
+    try {
+      const refit = () => fitFrame(frame);
+      frame.contentDocument.querySelectorAll('img').forEach((im) => {
+        if (!im.complete) { im.addEventListener('load', refit); im.addEventListener('error', refit); }
+      });
+      setTimeout(refit, 600);
+    } catch (e) { /* ignore */ }
     // Keep the mail fitted when the width changes (rotation, window resize)
     if (window.ResizeObserver) {
       let lastW = frame.clientWidth;
