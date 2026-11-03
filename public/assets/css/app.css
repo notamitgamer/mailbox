@@ -603,3 +603,19 @@ html { touch-action: manipulation; }
 .mail-avatar span.pink, #rAvatar.pink { background: #b83280; }
 .mail-avatar span.purple, #rAvatar.purple { background: #7c4dbd; }
 .mail-avatar span.slate, #rAvatar.slate { background: #4a5568; }
+
+/* ---- polish: quieter date headers, press feedback, compose button out of the way while reading ---- */
+/* Keep teal for things you act on (unread, selected, buttons); date headers are only labels */
+.mail-day { color: var(--overlay2); }
+.mail-day:not(:first-child) { border-top: 1px solid var(--surface0); margin-top: 6px; }
+
+/* A soft teal flash when a row is pressed, without the grey tap box */
+.mail-item { -webkit-tap-highlight-color: transparent; transition: background-color .15s ease; }
+.mail-item:active { background: rgba(79, 209, 181, .08); }
+
+/* On phones and tablets the reader covers the list, so the compose button only sits over the email: slide it away */
+.menu-compose { transition: transform .2s ease, opacity .2s ease; }
+@media (max-width: 1199.98px) {
+  .mailcontent-show .menu-compose { transform: translateY(24px) scale(.9); opacity: 0; pointer-events: none; }
+}
+@media (prefers-reduced-motion: reduce) { .menu-compose, .mail-item { transition: none; } }
