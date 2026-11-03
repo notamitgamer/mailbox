@@ -1,0 +1,5 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Material 3 primary container (dark scheme, seed #4FD1B5) -->
+    <color name="ic_launcher_background">#FF005143</color>
+</resources>

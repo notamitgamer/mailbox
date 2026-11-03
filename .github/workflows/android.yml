@@ -38,7 +38,7 @@ jobs:
           done
           npm ci --no-audit --no-fund
           npx cap add android
-          # Native bits: 120 Hz, bar colours, animated splash, FCM notifications with buttons, mailto/share, haptics.
+          # Native bits: 120 Hz, bar colours, static splash, FCM notifications with buttons, mailto/share, haptics.
           sed -i 's/minSdkVersion = 22/minSdkVersion = 23/' android/variables.gradle
           src=android/app/src/main
           cp native/*.java "$src/java/dev/amit/mail/"
@@ -47,6 +47,9 @@ jobs:
           # Launch background in the app colour instead of white.
           printf '<?xml version="1.0" encoding="utf-8"?><resources><color name="mail_bg">#FF121416</color></resources>' > "$src/res/values/mail_colors.xml"
           sed -i 's#@drawable/splash#@color/mail_bg#' "$src/res/values/styles.xml"
+          # Material 3 splash: static icon on the surface colour (same icon the app draws itself, no animation).
+          sed -i 's#<item name="android:background">@color/mail_bg</item>#&\n        <item name="windowSplashScreenBackground">@color/mail_bg</item>\n        <item name="windowSplashScreenAnimatedIcon">@drawable/mail_splash</item>#' "$src/res/values/styles.xml"
+          grep -q windowSplashScreenAnimatedIcon "$src/res/values/styles.xml"
           # Package Google Play's sign-in library with the Firebase auth plugin (without it the app crashes at launch).
           sed -i 's/^ext {/ext {\n    rgcfaIncludeGoogle = true/' android/variables.gradle
           grep -q rgcfaIncludeGoogle android/variables.gradle
@@ -60,9 +63,10 @@ jobs:
           printf '%s' "$KEYSTORE_BASE64" | base64 -d > "$RUNNER_TEMP/release.jks" \
             || { echo "::error::KEYSTORE_BASE64 is not valid base64 (paste the whole contents of KEYSTORE_BASE64.txt)"; exit 1; }
 
-          # App icon: reuse the web app's icon instead of the Capacitor default.
+          # App icon: Android 8+ uses the adaptive icon from native/res (mipmap-anydpi-v26, with a themed-icon layer).
+          # The Capacitor template's own foreground is not used; Android 6 and 7 get the web icon as a plain picture.
           res=android/app/src/main/res
-          rm -rf "$res"/mipmap-anydpi-v26
+          test -f "$res/mipmap-anydpi-v26/ic_launcher.xml" && grep -q mail_icon_mono "$res/mipmap-anydpi-v26/ic_launcher.xml"
           for d in "$res"/mipmap-*dpi; do
             cp ../public/icons/icon-192.png "$d/ic_launcher.png"
             cp ../public/icons/icon-192.png "$d/ic_launcher_round.png"

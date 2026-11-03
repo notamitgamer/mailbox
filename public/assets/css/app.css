@@ -801,3 +801,242 @@ html { -webkit-font-smoothing: antialiased; -moz-osx-font-smoothing: grayscale; 
 /* keep tonal and outlined buttons in their M3 colours on hover and focus (older rules recoloured them) */
 .btn-secondary:hover, .btn-secondary:focus, .btn-secondary:active { background-color: var(--md-secondary-container); border-color: transparent; color: var(--md-on-secondary-container); }
 .btn-ghost:hover, .btn-ghost:focus, .btn-outline-primary:hover, .btn-outline-primary:focus { background: transparent; border-color: var(--md-outline); color: var(--md-primary); }
+
+
+/* =====================================================================
+   Gmail-style look: pill search bar, flat three-line rows, roomy reader.
+   Appended last; uses the Material 3 tokens above.
+   ===================================================================== */
+
+/* ---- top: one pill with menu, search and avatar; folder name + actions underneath ---- */
+.mailbox-header { display: block; min-height: 0; background: var(--md-surface); padding: calc(10px + env(safe-area-inset-top)) calc(12px + env(safe-area-inset-right)) 2px calc(12px + env(safe-area-inset-left)); }
+.gm-pill { display: flex; align-items: center; gap: 4px; height: 56px; padding: 0 8px 0 4px; background: var(--md-surface-container-high); border-radius: 28px; }
+.gm-pill .mailbox-menu { position: static; width: 48px; height: 48px; flex: none; color: var(--md-on-surface-variant); }
+.gm-pill .mailbox-search { display: flex !important; flex: 1; align-items: center; min-width: 0; height: 100%; margin: 0; padding: 0; background: transparent !important; border: 0 !important; border-radius: 0; box-shadow: none !important; }
+.gm-pill .mailbox-search .form-control,
+.gm-pill .mailbox-search .form-control:focus { height: 100%; padding: 0 4px; font-size: 17px; background: transparent; border: 0; box-shadow: none; outline: 0; color: var(--md-on-surface); }
+.gm-pill .mailbox-search .form-control::placeholder { color: var(--md-on-surface-variant); opacity: 1; }
+.gm-pill .mail-avatar { position: static; width: 36px; height: 36px; margin: 0; flex: none; }
+.gm-pill .mail-avatar span { width: 100%; height: 100%; font-size: 16px; background: var(--md-primary-container); color: var(--md-on-primary-container); }
+.gm-bar { display: flex; align-items: center; gap: 4px; padding: 14px 0 0 8px; }
+.gm-bar .appbar-titles { padding-left: 0; flex-direction: row; align-items: baseline; justify-content: flex-start; gap: 10px; }
+.gm-bar .appbar-title { font-size: 14px; font-weight: 500; color: var(--md-on-surface-variant); letter-spacing: .1px; }
+.gm-bar .appbar-titles small { font-size: 12px; color: var(--md-outline); }
+.gm-bar .appbar-actions > a { width: 36px; height: 36px; font-size: 19px; }
+/* the old "search opens in place of the title" behaviour is gone: the bar is always there */
+.mailbox-header.searching .appbar-titles { display: flex; }
+#btnSearch, .mailbox-header.searching #btnSearch { display: none; }
+
+/* ---- list rows: avatar, then sender + time, subject, one-line preview ---- */
+.mail-group { padding-top: 4px; }
+.mail-row::after { display: none; }
+.mail-day { padding: 10px 20px 4px; font-size: 12px; font-weight: 500; color: var(--md-outline); }
+.mail-row .mail-item, .mail-item { padding: 12px 16px; align-items: flex-start; gap: 16px; }
+.mail-item .mail-avatar { width: 40px; height: 40px; flex: none; margin: 2px 0 0; }
+.mail-item .mail-avatar span { width: 40px; height: 40px; font-size: 18px; }
+.mail-item .mail-item-body > .d-flex { align-items: baseline; gap: 8px; }
+.mail-item .mail-sender { flex: 1; min-width: 0; font-size: 16px; line-height: 1.35; color: var(--md-on-surface-variant); font-weight: 400; }
+.mail-item .mail-time { margin-left: 0; font-size: 12px; color: var(--md-on-surface-variant); }
+.mail-item .mail-subject { display: block; flex: none; width: 100%; margin: 1px 0 0; font-size: 14px; line-height: 1.4; color: var(--md-on-surface-variant); font-weight: 400; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.mail-item .mail-text { margin: 1px 0 0; font-size: 14px; line-height: 1.4; color: var(--md-outline); -webkit-line-clamp: 1; line-clamp: 1; }
+.mail-item.unread .mail-sender, .mail-item.unread .mail-subject { color: var(--md-on-surface); font-weight: 700; }
+.mail-item.unread .mail-time { color: var(--md-on-surface); font-weight: 700; }
+.mail-item:not(.unread) .mail-avatar { opacity: .8; }
+
+/* a selected row is only shown where the list and the mail sit side by side; on phones the reader is its own screen, so nothing stays coloured */
+@media (max-width: 1199.98px) {
+  .mail-group .mail-row .mail-item.active,
+  .mail-group .mail-row .mail-item.active:hover { background-color: #121416 !important; }
+  .mail-item.active .mail-subject, .mail-item.active .mail-sender, .mail-item.active .mail-time { color: inherit; }
+}
+.mail-item.unread.active .mail-sender, .mail-item.unread.active .mail-subject, .mail-item.unread.active .mail-time { color: var(--md-on-surface); }
+@media (max-width: 1199.98px) {
+  .mail-item:not(.unread) .mail-sender, .mail-item:not(.unread) .mail-subject { color: var(--md-on-surface-variant); }
+  .mail-item.unread .mail-sender, .mail-item.unread .mail-subject, .mail-item.unread .mail-time { color: var(--md-on-surface); }
+}
+
+/* ---- reader: big plain subject, sender line, mail edge to edge, two wide pill buttons ---- */
+.mailcontent-subject h4 { font-size: 22px; font-weight: 400; line-height: 1.3; margin: 12px 0 0; padding-left: 4px; }
+.mailcontent-header { align-items: center; padding: 16px 0 10px; }
+.mailcontent-header .mail-avatar { width: 40px; height: 40px; flex: none; }
+.mailcontent-header .mail-avatar span, #rAvatar { font-size: 17px; }
+.mailcontent-sender { padding-left: 12px; flex: 1; }
+.mailcontent-sender h6 { margin: 0; font-size: 15px; font-weight: 600; line-height: 1.3; }
+.mailcontent-sender h6 span { font-size: 13px; font-weight: 400; }
+.mailcontent-sender p { margin: 2px 0 0; font-size: 13px; line-height: 1.3; color: var(--md-on-surface-variant); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.mailcontent-time { font-size: 12px; color: var(--md-on-surface-variant); align-self: flex-start; margin-top: 4px; }
+.mailcontent-body { background: transparent; border: 0; border-radius: 0; box-shadow: none; padding: 0; }
+.mailcontent-body iframe.frame-light { border-radius: 12px; }
+#rBody iframe { touch-action: pan-x pan-y; } /* the reader handles pinch zoom itself */
+.mailcontent-footer { display: flex; gap: 12px; padding: 12px 16px calc(12px + env(safe-area-inset-bottom)); }
+.mailcontent-footer .split-btn { flex: 1; }
+.mailcontent-footer .split-btn .split-lead { flex: 1; justify-content: center; height: 52px; border-radius: 26px 6px 6px 26px; }
+.mailcontent-footer .split-btn .split-trail { height: 52px; width: 52px; padding: 0; border-radius: 6px 26px 26px 6px; }
+.mailcontent-footer #btnForward { flex: 1; justify-content: center; height: 52px; border: 0; border-radius: 26px; background: var(--md-secondary-container); color: var(--md-on-secondary-container); }
+.mailcontent-footer #btnForward:hover, .mailcontent-footer #btnForward:focus { background: var(--md-secondary-container); color: var(--md-on-secondary-container); }
+
+
+/* =====================================================================
+   Reader top bar (back + one menu), pinned Reply/Forward, Gmail-style composer
+   ===================================================================== */
+
+/* ---- M3 menu: 48px rows, icon + label, divider, red destructive action ---- */
+.dropdown-menu { min-width: 220px; padding: 8px 0; }
+.dropdown-item { display: flex; align-items: center; gap: 16px; height: 48px; padding: 0 16px; font-size: 15px; color: var(--md-on-surface); background: transparent; white-space: nowrap; }
+.dropdown-item i { font-size: 20px; color: var(--md-on-surface-variant); flex: none; }
+.dropdown-item:hover, .dropdown-item:focus { background: rgba(230, 232, 234, .08); color: var(--md-on-surface); }
+.dropdown-item:active { background: rgba(230, 232, 234, .12); color: var(--md-on-surface); }
+.dropdown-divider { margin: 8px 0; border-top: 1px solid var(--md-outline-variant); opacity: 1; }
+.dropdown-item.dropdown-danger, .dropdown-item.dropdown-danger i { color: #ffb4ab; }
+.dropdown-item.dropdown-danger:hover, .dropdown-item.dropdown-danger:focus { background: rgba(255, 180, 171, .1); color: #ffb4ab; }
+.dropdown-item .form-check-input { margin: 0 0 0 auto; }
+
+/* ---- reader: toolbar is just back + menu ---- */
+.mailcontent-subject .nav { justify-content: space-between; }
+#mailBack { margin-right: auto; }
+
+/* ---- Reply / Forward stay at the bottom of the screen, short mail or long ---- */
+.mailcontent { display: flex !important; flex-direction: column; }
+.mailcontent > * { flex: none; }
+.mailcontent > .mailcontent-group { flex: 1 0 auto; }
+.mailcontent > .mailcontent-placeholder { flex: 1 1 auto; }
+.mailcontent-footer { position: sticky; bottom: 0; z-index: 6; margin-top: auto; background: var(--md-surface); }
+.mailcontent-footer.d-none { display: none !important; }
+
+/* ---- composer, after Gmail: back, attach, send, menu; From / To / Subject rows; then the message ---- */
+.compose-header { display: flex; align-items: center; gap: 4px; padding: calc(8px + env(safe-area-inset-top)) 8px 8px 8px; background: transparent; color: var(--md-on-surface); }
+.compose-header .nav-link, .compose-header button.nav-link { width: 48px; height: 48px; padding: 0; display: inline-flex; align-items: center; justify-content: center; border: 0; border-radius: 50%; background: transparent; color: var(--md-on-surface-variant); cursor: pointer; }
+.compose-header .nav-link i { font-size: 24px; }
+.compose-header .nav-link:hover, .compose-header .nav-link:focus-visible { background: rgba(230, 232, 234, .08); color: var(--md-on-surface); }
+.compose-header .nav-link:active { background: rgba(230, 232, 234, .12); }
+.compose-header .nav-link:disabled { opacity: .4; }
+.compose-header .compose-send i { color: var(--md-primary); }
+.compose-header .nav { display: flex; align-items: center; gap: 0; margin-left: auto; padding: 0; border: 0; }
+.compose-heading { flex: 1; min-width: 0; display: flex; flex-direction: column; justify-content: center; padding-left: 4px; }
+.compose-title { margin: 0; font-size: 16px; font-weight: 500; color: var(--md-on-surface); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.compose-heading .draft-state { margin: 0; font-size: 11px; color: var(--md-outline); }
+.compose-heading .draft-state:empty { display: none; }
+.gm-x { display: none; }
+@media (min-width: 768px) { .gm-back { display: none; } .gm-x { display: inline; } }
+@media (max-width: 767.98px) {
+  .nav-link-minimize, .nav-link-fullscreen { display: none !important; }
+  .compose-title { pointer-events: none; }
+}
+.compose-content { background: var(--md-surface); }
+.compose-body { padding: 0; background: var(--md-surface); }
+.compose-body .form-group { margin: 0; padding: 0 16px; border-bottom: 1px solid var(--md-outline-variant); position: relative; }
+.compose-body .form-group.from-row { display: flex; align-items: center; min-height: 56px; }
+.compose-body .pill-label { min-width: 52px; font-size: 16px; color: var(--md-on-surface-variant); }
+.compose-body .from-row .form-select, .compose-body .from-row .cs-btn { flex: 1; min-width: 0; height: 56px; padding: 0; font-size: 16px; color: var(--md-on-surface); background-color: transparent; border: 0; box-shadow: none; }
+.compose-body .pill-box { min-height: 56px; padding: 8px 40px 8px 0; border-bottom: 0; gap: 4px 6px; }
+.compose-body .pill-input { font-size: 16px; height: 32px; }
+.compose-body .pill { height: 32px; font-size: 14px; border-radius: 16px; background: var(--md-secondary-container); border-color: transparent; color: var(--md-on-secondary-container); }
+.compose-body .pill-toggle { right: 8px; top: 8px; width: 40px; height: 40px; display: inline-flex; align-items: center; justify-content: center; padding: 0; font-size: 24px; border-radius: 50%; color: var(--md-on-surface-variant); }
+.compose-body #cSubject { height: 56px; padding: 0; font-size: 16px; border: 0; background: transparent; color: var(--md-on-surface); box-shadow: none; }
+.compose-body #cSubject::placeholder, .compose-body #cBody::placeholder { color: var(--md-outline); }
+.compose-body .form-group:has(#cBody) { border-bottom: 0; padding-top: 8px; }
+.compose-body #cBody { padding: 0; font-size: 16px; line-height: 1.5; border: 0; background: transparent; color: var(--md-on-surface); box-shadow: none; resize: none; }
+.compose-attach, .tpl-bar, .tpl-on { margin-left: 16px; margin-right: 16px; }
+/* the base stylesheet hides every composer icon except the last one on phones; show them all */
+.compose-header .nav-link:not(:last-child), .compose-header button.nav-link:not(:last-child) { display: inline-flex; }
+.compose-header .nav-link + .nav-link { margin-left: 0; }
+.compose-header .nav-link-fullscreen i:last-child { display: none; }
+@media (max-width: 767.98px) { .compose-header .nav-link-minimize:not(:last-child), .compose-header .nav-link-fullscreen:not(:last-child) { display: none !important; } }
+.compose-header .nav-link-close .gm-x { display: none; }
+@media (min-width: 768px) { .compose-header .nav-link-close .gm-back { display: none; } .compose-header .nav-link-close .gm-x { display: inline; } }
+
+
+/* =====================================================================
+   Material 3 sweep: every remaining component moves to the M3 tokens
+   ===================================================================== */
+
+/* ---- composer From row: an editable field, a menu of saved addresses, a "Temporary" tag ---- */
+.compose-body .from-row .form-control { flex: 1; min-width: 0; height: 56px; padding: 0; font-size: 16px; color: var(--md-on-surface); background: transparent; border: 0; box-shadow: none; }
+.compose-body .from-row .form-control::placeholder { color: var(--md-outline); }
+.from-temp { flex: none; margin-right: 4px; padding: 2px 10px; font-size: 12px; font-weight: 500; color: var(--md-on-secondary-container); background: var(--md-secondary-container); border-radius: 8px; }
+.from-temp.d-none { display: none; }
+.from-dd { flex: none; }
+.from-row .pill-toggle { position: static; width: 40px; height: 40px; display: inline-flex; align-items: center; justify-content: center; padding: 0; font-size: 24px; border-radius: 50%; color: var(--md-on-surface-variant); background: transparent; border: 0; }
+.dropdown-item small { margin-left: auto; padding-left: 16px; font-size: 12px; color: var(--md-primary); }
+.dropdown-hint { padding: 8px 16px 4px; max-width: 280px; font-size: 12px; line-height: 1.4; color: var(--md-on-surface-variant); white-space: normal; border-top: 1px solid var(--md-outline-variant); margin-top: 8px; }
+
+/* ---- select lists (the custom popup used for templates): an M3 menu ---- */
+.cs-list { padding: 8px 0; background: var(--md-surface-container); border: 0; border-radius: 12px; box-shadow: var(--md-elev-2); }
+.cs-item { display: flex; align-items: center; min-height: 48px; padding: 0 16px; border-radius: 0; font-size: 15px; color: var(--md-on-surface); }
+.cs-item:hover, .cs-item:focus { background: rgba(230, 232, 234, .08); }
+.cs-item:active { background: rgba(230, 232, 234, .12); }
+.cs-item.on { background: var(--md-secondary-container); color: var(--md-on-secondary-container); font-weight: 500; }
+
+/* ---- outlined text fields and selects in dialogs ---- */
+.modal .form-control, .modal .form-select, .tpl-bar .form-select, .tpl-bar .cs-btn, .modal .cs-btn {
+  min-height: 48px; padding: 0 16px; font-size: 15px; color: var(--md-on-surface); background-color: transparent; border: 1px solid var(--md-outline); border-radius: 4px; box-shadow: none; }
+.modal textarea.form-control { padding: 12px 16px; }
+.modal .form-control:hover, .modal .form-select:hover { border-color: var(--md-on-surface); }
+.modal .form-control:focus, .modal .form-select:focus { border-color: var(--md-primary); box-shadow: inset 0 0 0 1px var(--md-primary); background-color: transparent; }
+.modal .form-label { margin-bottom: 4px; font-size: 12px; font-weight: 500; color: var(--md-on-surface-variant); }
+.modal .form-control::placeholder { color: var(--md-outline); }
+.tpl-bar .form-select, .tpl-bar .cs-btn { min-height: 40px; font-size: 14px; }
+
+/* ---- checkbox ---- */
+.form-check-input { width: 18px; height: 18px; margin-top: 0; background-color: transparent; border: 2px solid var(--md-on-surface-variant); border-radius: 2px; box-shadow: none; }
+.form-check-input:focus { box-shadow: 0 0 0 4px rgba(79, 209, 181, .22); border-color: var(--md-on-surface-variant); }
+.form-check-input:checked { background-color: var(--md-primary); border-color: var(--md-primary); }
+.form-check-input:checked[type="checkbox"] { background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 20 20'%3e%3cpath fill='none' stroke='%2300382e' stroke-linecap='round' stroke-linejoin='round' stroke-width='3' d='M5 10.5l3.5 3.5L15 7'/%3e%3c/svg%3e"); }
+.form-check { display: flex; align-items: center; gap: 12px; padding-left: 0; }
+.form-check .form-check-input { float: none; margin-left: 0; flex: none; }
+
+/* ---- buttons: outlined, text, small; dialog close ---- */
+.btn-white { background: transparent; border: 1px solid var(--md-outline); color: var(--md-primary); border-radius: 20px; }
+.btn-white:hover, .btn-white:focus { background: transparent; border-color: var(--md-outline); color: var(--md-primary); }
+.btn-white.text-danger { color: #ffb4ab !important; }
+.btn-sm { min-height: 32px; padding: 0 16px; font-size: 13px; border-radius: 16px; }
+.btn-primary, .btn-secondary, .btn-white, .btn-ghost { display: inline-flex; align-items: center; justify-content: center; }
+.btn:disabled, .btn.disabled { opacity: 1; background-color: rgba(230, 232, 234, .12); border-color: transparent; color: rgba(230, 232, 234, .38); box-shadow: none; }
+.btn-close { width: 40px; height: 40px; padding: 0; margin: -8px -8px -8px auto; border-radius: 50%; background-size: 16px; opacity: .8; }
+.btn-close:hover { background-color: rgba(230, 232, 234, .08); opacity: 1; }
+.modal-footer .btn-white { border: 0; color: var(--md-primary); }
+.modal-footer .btn-white.text-danger { color: #ffb4ab !important; }
+
+/* ---- chips: attachments and recipients are M3 assist / input chips (32px, 8px corners, outlined) ---- */
+.attach-chip { min-height: 32px; padding: 0 12px; font-size: 14px; font-weight: 500; color: var(--md-on-surface-variant); background: transparent; border: 1px solid var(--md-outline-variant); border-radius: 8px; }
+.attach-chip:hover, .attach-chip:focus-visible { background: rgba(230, 232, 234, .08); border-color: var(--md-outline-variant); color: var(--md-on-surface); }
+.attach-chip.compose-chip:hover { background: transparent; border-color: var(--md-outline-variant); color: var(--md-on-surface-variant); }
+.attach-chip.failed { border-color: #ffb4ab; }
+.attach-chip .attach-x:hover, .attach-chip .attach-x:focus-visible { background: rgba(230, 232, 234, .12); }
+.compose-body .pill { height: 32px; padding: 0 4px 0 12px; border-radius: 8px; background: transparent; border: 1px solid var(--md-outline-variant); color: var(--md-on-surface-variant); font-weight: 500; }
+.compose-body .pill.bad { color: #ffb4ab; border-color: #ffb4ab; }
+
+/* ---- template bar and preview: tonal container ---- */
+.tpl-bar { padding: 12px 16px; background: var(--md-surface-container-high); border-radius: 16px; color: var(--md-on-surface-variant); }
+.tpl-head { color: var(--md-on-surface-variant); }
+.tpl-head button:hover { background: rgba(230, 232, 234, .08); color: var(--md-on-surface); }
+.tpl-preview { border-radius: 12px; }
+
+/* ---- pull to refresh, empty states, load more ---- */
+.ptr i { background: var(--md-surface-container-highest); color: var(--md-primary); box-shadow: var(--md-elev-1); }
+.list-empty i { color: var(--md-outline-variant); }
+.list-empty strong { color: var(--md-on-surface); }
+.list-empty span { color: var(--md-on-surface-variant); }
+.load-more .btn { min-height: 40px; border-radius: 20px; }
+
+/* ---- navigation drawer: M3 labels, count text, tonal "update" button ---- */
+.sidebar-label { font-size: 14px; font-weight: 500; letter-spacing: .1px; color: var(--md-on-surface-variant); }
+.sidebar-body .nav-link { min-height: 56px; color: var(--md-on-surface-variant); }
+.sidebar-body .nav-link:hover, .sidebar-body .nav-link:focus { color: var(--md-on-surface); }
+.sidebar-body .nav-link .total { font-size: 14px; font-weight: 500; color: var(--md-on-surface-variant); }
+.sidebar-body .nav-link.active .total { color: var(--md-on-secondary-container); }
+.sidebar-footer { background: transparent; border-top: 1px solid var(--md-outline-variant); }
+.sidebar-footer #buildReload { color: var(--md-on-secondary-container); background: var(--md-secondary-container); border-radius: 20px; padding: 10px 16px; }
+
+/* ---- composer window on tablets and desktops: M3 sheet ---- */
+@media (min-width: 768px) {
+  .compose-content { border-radius: 28px 28px 0 0; background: var(--md-surface-container); box-shadow: var(--md-elev-3); overflow: hidden; }
+  .compose-content .compose-body { background: var(--md-surface-container); }
+  .compose-header { padding: 8px 8px 4px; }
+}
+
+/* ---- icon buttons: one state layer everywhere ---- */
+.mailcontent-subject .nav-link:hover, .mailcontent-subject .nav-link:focus-visible { background: rgba(230, 232, 234, .08); color: var(--md-on-surface); }
+.mailcontent-subject .nav-link:active { background: rgba(230, 232, 234, .12); }
+.mailcontent-subject .nav-link { color: var(--md-on-surface-variant); }
+.sidebar-label { text-transform: none; }
