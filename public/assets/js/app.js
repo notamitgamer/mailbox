@@ -903,7 +903,7 @@ function renderReader(m) {
   $('#mnReply, #mnUnread, #btnUnreadTop').toggleClass('d-none', !inbox);
   $('#btnFwdTop, #btnForward, #mnForward').toggleClass('d-none', trash);
   $('#btnRestoreTop, #mnRestore').toggleClass('d-none', !trash);
-  $('#btnDelTop').attr({ title: trash ? 'Delete forever' : 'Move to Bin', 'aria-label': trash ? 'Delete forever' : 'Move to Bin' });
+  $('#mnDelete span').text(trash ? 'Delete forever' : 'Move to Bin');
   const rUrl = resendUrl(m, sent ? 'sent' : state.folder);
   $('#mnResend').toggleClass('d-none', !rUrl).attr('href', rUrl || '#');
   $('#rAttach').html(attachChips(m));
@@ -1796,6 +1796,8 @@ $('#cDiscard').on('click', async (e) => {
   }
   closeCompose();
 });
+// the composer's menu stays open while "Send as HTML" is ticked; close it when leaving or discarding
+$('#cDiscard, .nav-link-close, #cSend').on('click', () => { const t = document.getElementById('cMore'); if (t) window.bootstrap.Dropdown.getOrCreateInstance(t).hide(); });
 $('#cSend').on('click', sendMail);
 
 // keep the saved copy fresh: when back online, when the app is reopened, and every couple of minutes
@@ -1825,7 +1827,7 @@ $('#search').on('blur', () => { if (!$('#search').val()) { $('.mailbox-header').
   .on('keydown', (e) => { if (e.key === 'Escape') { $('#search').val('').trigger('input').trigger('blur'); } });
 $('#btnFwdTop, #btnForward').on('click', (e) => { e.preventDefault(); openForward(); });
 $('#btnUnreadTop').on('click', (e) => { e.preventDefault(); markUnread(); });
-$('#btnDelTop').on('click', (e) => { e.preventDefault(); deleteMail(); });
+$('#mnDelete').on('click', (e) => { e.preventDefault(); deleteMail(); });
 
 $(document).on('keydown', (e) => {
   if (e.ctrlKey || e.metaKey || e.altKey || $(e.target).is('input, textarea, select, [contenteditable]') || $('.modal.show').length) return;
