@@ -306,7 +306,12 @@
         <div class="compose-body">
           <div class="form-group from-row">
             <span class="pill-label">From</span>
-            <select id="cFrom" class="form-select" aria-label="From"></select>
+            <input id="cFrom" type="text" class="form-control" inputmode="email" autocomplete="off" autocapitalize="off" spellcheck="false" aria-label="From address" placeholder="name@">
+            <span id="cFromTemp" class="from-temp d-none">Temporary</span>
+            <div class="dropdown from-dd">
+              <button id="cFromBtn" type="button" class="pill-toggle" data-bs-toggle="dropdown" data-bs-popper-config='{"strategy":"fixed"}' aria-expanded="false" title="Choose sender address" aria-label="Choose sender address"><i class="ri-arrow-down-s-line" aria-hidden="true"></i></button>
+              <div id="cFromMenu" class="dropdown-menu dropdown-menu-end"></div>
+            </div>
           </div>
           <div class="form-group has-toggle">
             <div id="cTo" class="pill-box" data-label="To"></div>

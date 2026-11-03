@@ -662,7 +662,7 @@ csList.addEventListener('click', (e) => {
 document.addEventListener('pointerdown', (e) => { if (csOpen && !csList.contains(e.target) && !csOpen.btn.contains(e.target)) closeCsList(false); });
 const jqVal = $.fn.val; // .val(x) on a <select> doesn't fire events, so refresh the label ourselves
 $.fn.val = function (v) { const r = jqVal.apply(this, arguments); if (arguments.length) this.filter('select').each((_, el) => csRefresh(el)); return r; };
-['cFrom', 'cTplSel', 'tplPick'].forEach((id) => customSelect(document.getElementById(id)));
+['cTplSel', 'tplPick'].forEach((id) => customSelect(document.getElementById(id)));
 
 function showReader() {
   $('.mailcontent-placeholder').addClass('d-none').siblings().removeClass('d-none');
@@ -1171,8 +1171,10 @@ function openCompose({ to = [], cc = [], bcc = [], from = '', subject = '', body
   composeSeq++;
   cFiles = (attachments || []).filter((a) => a && a.fid).map((a) => ({ fid: a.fid, filename: a.filename, contentType: a.contentType, size: a.size }));
   renderComposeFiles();
-  $('#cFrom').html((config.aliases || []).map((a) => `<option>${esc(a)}</option>`).join('')).closest('.form-group').toggle((config.aliases || []).length > 1);
-  if (from) $('#cFrom').val(from);
+  // From: the primary address unless this mail says otherwise; any name@domain can be typed (not stored anywhere)
+  $('#cFromMenu').html((config.aliases || []).map((a, i) => `<a href="#" class="dropdown-item" data-addr="${esc(a)}"><i class="ri-mail-line" aria-hidden="true"></i><span>${esc(a)}</span>${i === 0 ? '<small>Primary</small>' : ''}</a>`).join('')
+    + '<div class="dropdown-hint">Or type any name@' + esc(fromDomain()) + ' in the field. It is not saved.</div>');
+  $('#cFrom').val(from || primaryFrom()); syncFromTemp();
   setPills($('#cTo'), to); setPills($('#cCc'), cc); setPills($('#cBcc'), bcc);
   showCc(asList(cc).length > 0 || asList(bcc).length > 0);
   $('#cSubject').val(subject); $('#cBody').val(body); $('#cHtml').prop('checked', htmlMode); $('#cDraftState').text('');
@@ -1225,11 +1227,26 @@ function startReply(all) {
   });
 }
 
+// ---- From address: the first alias is the primary; anything@its-domain can be typed for one mail ----
+const primaryFrom = () => (config.aliases || [])[0] || '';
+const fromDomain = () => primaryFrom().split('@')[1] || '';
+const fromOk = (v) => { const a = String(v || '').toLowerCase(); const [l, d, ...r] = a.split('@');
+  return (config.aliases || []).map((x) => String(x).toLowerCase()).includes(a) || (!r.length && !!d && d === fromDomain() && /^[a-z0-9](?:[a-z0-9._+-]{0,62}[a-z0-9])?$/.test(l) && !l.includes('..')); };
+function normFrom() { // "support" -> support@domain; empty -> the primary
+  let v = String($('#cFrom').val() || '').trim().toLowerCase();
+  if (!v) v = primaryFrom(); else if (!v.includes('@') && fromDomain()) v = v.replace(/@+$/, '') + '@' + fromDomain();
+  $('#cFrom').val(v); syncFromTemp(); return v;
+}
+function syncFromTemp() { const v = String($('#cFrom').val() || '').trim().toLowerCase(); $('#cFromTemp').toggleClass('d-none', !v || (config.aliases || []).map((x) => String(x).toLowerCase()).includes(v)); }
+$('#cFrom').on('change blur', normFrom).on('input', syncFromTemp);
+$('#cFromMenu').on('click', '[data-addr]', function (e) { e.preventDefault(); $('#cFrom').val(this.dataset.addr).trigger('change'); });
+
 async function sendMail() {
   if (!navigator.onLine) return toast('You are offline. Connect to send.');
   commitAllPills();
   if ($('.compose .pill.bad').length) return toast('Fix the red address first.');
   if (!pillsOf($('#cTo')).length) return toast('Add at least one recipient.');
+  if (!fromOk(normFrom())) return toast(`Send from an address ending in @${fromDomain()}.`);
   if (cFiles.some((f) => f.tmp)) return toast('Wait for the files to finish uploading.');
   clearTimeout(draftTimer);
   $('#cSend').prop('disabled', true);

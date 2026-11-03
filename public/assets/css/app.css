@@ -944,3 +944,99 @@ html { -webkit-font-smoothing: antialiased; -moz-osx-font-smoothing: grayscale; 
 @media (max-width: 767.98px) { .compose-header .nav-link-minimize:not(:last-child), .compose-header .nav-link-fullscreen:not(:last-child) { display: none !important; } }
 .compose-header .nav-link-close .gm-x { display: none; }
 @media (min-width: 768px) { .compose-header .nav-link-close .gm-back { display: none; } .compose-header .nav-link-close .gm-x { display: inline; } }
+
+
+/* =====================================================================
+   Material 3 sweep: every remaining component moves to the M3 tokens
+   ===================================================================== */
+
+/* ---- composer From row: an editable field, a menu of saved addresses, a "Temporary" tag ---- */
+.compose-body .from-row .form-control { flex: 1; min-width: 0; height: 56px; padding: 0; font-size: 16px; color: var(--md-on-surface); background: transparent; border: 0; box-shadow: none; }
+.compose-body .from-row .form-control::placeholder { color: var(--md-outline); }
+.from-temp { flex: none; margin-right: 4px; padding: 2px 10px; font-size: 12px; font-weight: 500; color: var(--md-on-secondary-container); background: var(--md-secondary-container); border-radius: 8px; }
+.from-temp.d-none { display: none; }
+.from-dd { flex: none; }
+.from-row .pill-toggle { position: static; width: 40px; height: 40px; display: inline-flex; align-items: center; justify-content: center; padding: 0; font-size: 24px; border-radius: 50%; color: var(--md-on-surface-variant); background: transparent; border: 0; }
+.dropdown-item small { margin-left: auto; padding-left: 16px; font-size: 12px; color: var(--md-primary); }
+.dropdown-hint { padding: 8px 16px 4px; max-width: 280px; font-size: 12px; line-height: 1.4; color: var(--md-on-surface-variant); white-space: normal; border-top: 1px solid var(--md-outline-variant); margin-top: 8px; }
+
+/* ---- select lists (the custom popup used for templates): an M3 menu ---- */
+.cs-list { padding: 8px 0; background: var(--md-surface-container); border: 0; border-radius: 12px; box-shadow: var(--md-elev-2); }
+.cs-item { display: flex; align-items: center; min-height: 48px; padding: 0 16px; border-radius: 0; font-size: 15px; color: var(--md-on-surface); }
+.cs-item:hover, .cs-item:focus { background: rgba(230, 232, 234, .08); }
+.cs-item:active { background: rgba(230, 232, 234, .12); }
+.cs-item.on { background: var(--md-secondary-container); color: var(--md-on-secondary-container); font-weight: 500; }
+
+/* ---- outlined text fields and selects in dialogs ---- */
+.modal .form-control, .modal .form-select, .tpl-bar .form-select, .tpl-bar .cs-btn, .modal .cs-btn {
+  min-height: 48px; padding: 0 16px; font-size: 15px; color: var(--md-on-surface); background-color: transparent; border: 1px solid var(--md-outline); border-radius: 4px; box-shadow: none; }
+.modal textarea.form-control { padding: 12px 16px; }
+.modal .form-control:hover, .modal .form-select:hover { border-color: var(--md-on-surface); }
+.modal .form-control:focus, .modal .form-select:focus { border-color: var(--md-primary); box-shadow: inset 0 0 0 1px var(--md-primary); background-color: transparent; }
+.modal .form-label { margin-bottom: 4px; font-size: 12px; font-weight: 500; color: var(--md-on-surface-variant); }
+.modal .form-control::placeholder { color: var(--md-outline); }
+.tpl-bar .form-select, .tpl-bar .cs-btn { min-height: 40px; font-size: 14px; }
+
+/* ---- checkbox ---- */
+.form-check-input { width: 18px; height: 18px; margin-top: 0; background-color: transparent; border: 2px solid var(--md-on-surface-variant); border-radius: 2px; box-shadow: none; }
+.form-check-input:focus { box-shadow: 0 0 0 4px rgba(79, 209, 181, .22); border-color: var(--md-on-surface-variant); }
+.form-check-input:checked { background-color: var(--md-primary); border-color: var(--md-primary); }
+.form-check-input:checked[type="checkbox"] { background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 20 20'%3e%3cpath fill='none' stroke='%2300382e' stroke-linecap='round' stroke-linejoin='round' stroke-width='3' d='M5 10.5l3.5 3.5L15 7'/%3e%3c/svg%3e"); }
+.form-check { display: flex; align-items: center; gap: 12px; padding-left: 0; }
+.form-check .form-check-input { float: none; margin-left: 0; flex: none; }
+
+/* ---- buttons: outlined, text, small; dialog close ---- */
+.btn-white { background: transparent; border: 1px solid var(--md-outline); color: var(--md-primary); border-radius: 20px; }
+.btn-white:hover, .btn-white:focus { background: transparent; border-color: var(--md-outline); color: var(--md-primary); }
+.btn-white.text-danger { color: #ffb4ab !important; }
+.btn-sm { min-height: 32px; padding: 0 16px; font-size: 13px; border-radius: 16px; }
+.btn-primary, .btn-secondary, .btn-white, .btn-ghost { display: inline-flex; align-items: center; justify-content: center; }
+.btn:disabled, .btn.disabled { opacity: 1; background-color: rgba(230, 232, 234, .12); border-color: transparent; color: rgba(230, 232, 234, .38); box-shadow: none; }
+.btn-close { width: 40px; height: 40px; padding: 0; margin: -8px -8px -8px auto; border-radius: 50%; background-size: 16px; opacity: .8; }
+.btn-close:hover { background-color: rgba(230, 232, 234, .08); opacity: 1; }
+.modal-footer .btn-white { border: 0; color: var(--md-primary); }
+.modal-footer .btn-white.text-danger { color: #ffb4ab !important; }
+
+/* ---- chips: attachments and recipients are M3 assist / input chips (32px, 8px corners, outlined) ---- */
+.attach-chip { min-height: 32px; padding: 0 12px; font-size: 14px; font-weight: 500; color: var(--md-on-surface-variant); background: transparent; border: 1px solid var(--md-outline-variant); border-radius: 8px; }
+.attach-chip:hover, .attach-chip:focus-visible { background: rgba(230, 232, 234, .08); border-color: var(--md-outline-variant); color: var(--md-on-surface); }
+.attach-chip.compose-chip:hover { background: transparent; border-color: var(--md-outline-variant); color: var(--md-on-surface-variant); }
+.attach-chip.failed { border-color: #ffb4ab; }
+.attach-chip .attach-x:hover, .attach-chip .attach-x:focus-visible { background: rgba(230, 232, 234, .12); }
+.compose-body .pill { height: 32px; padding: 0 4px 0 12px; border-radius: 8px; background: transparent; border: 1px solid var(--md-outline-variant); color: var(--md-on-surface-variant); font-weight: 500; }
+.compose-body .pill.bad { color: #ffb4ab; border-color: #ffb4ab; }
+
+/* ---- template bar and preview: tonal container ---- */
+.tpl-bar { padding: 12px 16px; background: var(--md-surface-container-high); border-radius: 16px; color: var(--md-on-surface-variant); }
+.tpl-head { color: var(--md-on-surface-variant); }
+.tpl-head button:hover { background: rgba(230, 232, 234, .08); color: var(--md-on-surface); }
+.tpl-preview { border-radius: 12px; }
+
+/* ---- pull to refresh, empty states, load more ---- */
+.ptr i { background: var(--md-surface-container-highest); color: var(--md-primary); box-shadow: var(--md-elev-1); }
+.list-empty i { color: var(--md-outline-variant); }
+.list-empty strong { color: var(--md-on-surface); }
+.list-empty span { color: var(--md-on-surface-variant); }
+.load-more .btn { min-height: 40px; border-radius: 20px; }
+
+/* ---- navigation drawer: M3 labels, count text, tonal "update" button ---- */
+.sidebar-label { font-size: 14px; font-weight: 500; letter-spacing: .1px; color: var(--md-on-surface-variant); }
+.sidebar-body .nav-link { min-height: 56px; color: var(--md-on-surface-variant); }
+.sidebar-body .nav-link:hover, .sidebar-body .nav-link:focus { color: var(--md-on-surface); }
+.sidebar-body .nav-link .total { font-size: 14px; font-weight: 500; color: var(--md-on-surface-variant); }
+.sidebar-body .nav-link.active .total { color: var(--md-on-secondary-container); }
+.sidebar-footer { background: transparent; border-top: 1px solid var(--md-outline-variant); }
+.sidebar-footer #buildReload { color: var(--md-on-secondary-container); background: var(--md-secondary-container); border-radius: 20px; padding: 10px 16px; }
+
+/* ---- composer window on tablets and desktops: M3 sheet ---- */
+@media (min-width: 768px) {
+  .compose-content { border-radius: 28px 28px 0 0; background: var(--md-surface-container); box-shadow: var(--md-elev-3); overflow: hidden; }
+  .compose-content .compose-body { background: var(--md-surface-container); }
+  .compose-header { padding: 8px 8px 4px; }
+}
+
+/* ---- icon buttons: one state layer everywhere ---- */
+.mailcontent-subject .nav-link:hover, .mailcontent-subject .nav-link:focus-visible { background: rgba(230, 232, 234, .08); color: var(--md-on-surface); }
+.mailcontent-subject .nav-link:active { background: rgba(230, 232, 234, .12); }
+.mailcontent-subject .nav-link { color: var(--md-on-surface-variant); }
+.sidebar-label { text-transform: none; }
