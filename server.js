@@ -435,6 +435,19 @@ app.post('/api/incoming', express.text({ type: 'application/json' }), async (req
 const OWNER_EMAIL = (process.env.MAILBOX_OWNER_EMAIL || process.env.PERSONAL_GMAIL || '').trim().toLowerCase();
 const SEND_ALIASES = (process.env.ALLOWED_ALIASES || '').split(',').map((a) => a.trim().toLowerCase()).filter(Boolean);
 const FROM_NAME = (process.env.FROM_NAME || '').replace(/[<>"\\\r\n]/g, '').trim();
+// The first alias is the primary. Besides the listed aliases, any name@<primary's domain> may be typed in the
+// composer as a one-off sender (nothing is stored): the domain is already verified for sending, so it works as it is.
+const PRIMARY_DOMAIN = (SEND_ALIASES[0] || '').split('@')[1] || '';
+const LOCAL_PART_RE = /^[a-z0-9](?:[a-z0-9._+-]{0,62}[a-z0-9])?$/;
+// '' -> the primary; a listed alias or name@primary-domain -> itself; anything else -> false (rejected)
+function pickFrom(value) {
+  const a = String(value || '').trim().toLowerCase();
+  if (!a) return SEND_ALIASES[0];
+  if (SEND_ALIASES.includes(a)) return a;
+  const parts = a.split('@');
+  if (parts.length === 2 && PRIMARY_DOMAIN && parts[1] === PRIMARY_DOMAIN && LOCAL_PART_RE.test(parts[0]) && !parts[0].includes('..')) return a;
+  return false;
+}
 
 const FOLDERS = {
   inbox: { collection: 'mails', dateField: 'receivedAt' },
@@ -838,7 +851,8 @@ app.post('/api/send', requireOwner, express.json({ limit: '2mb' }), handle(async
     return res.status(413).json({ error: 'Message too large' });
   }
 
-  const fromAddress = SEND_ALIASES.includes(String(from || '').toLowerCase()) ? String(from).toLowerCase() : SEND_ALIASES[0];
+  const fromAddress = pickFrom(from);
+  if (fromAddress === false) return res.status(400).json({ error: `Send from an address ending in @${PRIMARY_DOMAIN}` });
   if (!fromAddress) return res.status(500).json({ error: 'No sender address configured (ALLOWED_ALIASES)' });
 
   const payload = {

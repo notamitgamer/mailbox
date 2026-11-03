@@ -7,7 +7,8 @@
     <meta name="robots" content="noindex">
     <title>Mail</title>
     <link rel="manifest" href="/manifest.webmanifest">
-    <link rel="icon" href="/icons/icon-192.png">
+    <link rel="icon" href="/icons/icon-512.svg" type="image/svg+xml">
+    <link rel="icon" href="/icons/icon-192.png" type="image/png">
     <link rel="apple-touch-icon" href="/icons/icon-192.png">
     <link rel="preload" href="assets/fonts/lexend-latin.woff2" as="font" type="font/woff2" crossorigin>
     <link href="lib/remixicon/fonts/remixicon.css" rel="stylesheet">
@@ -175,24 +176,27 @@
 
     <div class="mailbox">
       <div class="mailbox-header">
-        <a href="#" class="mailbox-menu" role="button" aria-label="Open menu">
-          <i class="ri-menu-2-fill" aria-hidden="true"></i>
-        </a>
-        <div class="appbar-titles">
-          <strong id="folderTitle" class="appbar-title">Inbox</strong>
-          <small id="countText" role="status"></small>
-        </div>
-        <div class="mailbox-search">
-          <i class="ri-search-line"></i>
-          <input id="search" type="search" class="form-control" placeholder="Search mail" aria-label="Search loaded mail">
-        </div>
-        <div class="appbar-actions">
-          <a href="#" id="btnSearch" role="button" title="Search" aria-label="Search"><i class="ri-search-line" aria-hidden="true"></i></a>
-          <a href="#" id="btnFilter" role="button" title="Show unread only" aria-label="Show unread only" aria-pressed="false"><i class="ri-filter-3-line" aria-hidden="true"></i></a>
-          <a href="#" id="btnEmptyBin" class="d-none" role="button" title="Empty Bin" aria-label="Empty Bin"><i class="ri-delete-bin-2-line" aria-hidden="true"></i></a>
-          <a href="#" id="btnNotify" class="d-none" role="button" title="Turn on notifications" aria-label="Turn on notifications"><i class="ri-notification-off-line" aria-hidden="true"></i></a>
-          <a href="#" id="refresh" role="button" title="Refresh" aria-label="Refresh mail"><i class="ri-refresh-line" aria-hidden="true"></i></a>
+        <div class="gm-pill">
+          <a href="#" class="mailbox-menu" role="button" aria-label="Open menu">
+            <i class="ri-menu-2-fill" aria-hidden="true"></i>
+          </a>
+          <div class="mailbox-search">
+            <input id="search" type="search" class="form-control" placeholder="Search in mail" aria-label="Search loaded mail">
+          </div>
           <a href="#" id="avatar" class="mail-avatar" role="button" title="Sign out" aria-label="Sign out"><span>m</span></a>
+        </div>
+        <div class="gm-bar">
+          <div class="appbar-titles">
+            <strong id="folderTitle" class="appbar-title">Inbox</strong>
+            <small id="countText" role="status"></small>
+          </div>
+          <div class="appbar-actions">
+            <a href="#" id="btnSearch" role="button" title="Search" aria-label="Search"><i class="ri-search-line" aria-hidden="true"></i></a>
+            <a href="#" id="btnFilter" role="button" title="Show unread only" aria-label="Show unread only" aria-pressed="false"><i class="ri-filter-3-line" aria-hidden="true"></i></a>
+            <a href="#" id="btnEmptyBin" class="d-none" role="button" title="Empty Bin" aria-label="Empty Bin"><i class="ri-delete-bin-2-line" aria-hidden="true"></i></a>
+            <a href="#" id="btnNotify" class="d-none" role="button" title="Turn on notifications" aria-label="Turn on notifications"><i class="ri-notification-off-line" aria-hidden="true"></i></a>
+            <a href="#" id="refresh" role="button" title="Refresh" aria-label="Refresh mail"><i class="ri-refresh-line" aria-hidden="true"></i></a>
+          </div>
         </div>
       </div>
 
@@ -213,20 +217,17 @@
       <div class="mailcontent-subject d-none">
         <nav class="nav">
           <a id="mailBack" href="#" class="nav-link" role="button" title="Back to list" aria-label="Back to list"><i class="ri-arrow-left-line" aria-hidden="true"></i></a>
-          <a href="#" id="btnReplyTop" class="nav-link quick" role="button" title="Reply" aria-label="Reply"><i class="ri-reply-line" aria-hidden="true"></i></a>
-          <a href="#" id="btnFwdTop" class="nav-link quick" role="button" title="Forward" aria-label="Forward"><i class="ri-share-forward-line" aria-hidden="true"></i></a>
-          <a href="#" id="btnUnreadTop" class="nav-link quick" role="button" title="Mark as unread" aria-label="Mark as unread"><i class="ri-mail-unread-line" aria-hidden="true"></i></a>
-          <span class="nav-sep" aria-hidden="true"></span>
-          <a href="#" id="btnRestoreTop" class="nav-link quick d-none" role="button" title="Restore" aria-label="Restore"><i class="ri-arrow-go-back-line" aria-hidden="true"></i></a>
-          <a href="#" id="btnDelTop" class="nav-link quick nav-danger" role="button" title="Delete" aria-label="Delete"><i class="ri-delete-bin-line" aria-hidden="true"></i></a>
           <div class="dropdown">
             <a href="#" id="btnMore" class="nav-link" data-bs-toggle="dropdown" aria-expanded="false" title="More" aria-label="More actions"><i class="ri-more-2-fill"></i></a>
             <div class="dropdown-menu dropdown-menu-end">
-              <a id="mnRestore" href="#" class="dropdown-item d-none"><i class="ri-arrow-go-back-line"></i> Restore</a>
-              <a id="btnPdf" href="#" class="dropdown-item"><i class="ri-file-pdf-line"></i> Save as PDF</a>
-              <a id="mnPrint" href="#" class="dropdown-item"><i class="ri-printer-line"></i> Print</a>
-              <a id="mnShare" href="#" class="dropdown-item"><i class="ri-share-line"></i> Share</a>
-              <a id="mnResend" href="#" class="dropdown-item" target="_blank" rel="noopener"><i class="ri-external-link-line"></i> Open in Resend</a>
+              <a id="mnUnread" href="#" class="dropdown-item"><i class="ri-mail-unread-line" aria-hidden="true"></i><span>Mark as unread</span></a>
+              <a id="mnRestore" href="#" class="dropdown-item d-none"><i class="ri-arrow-go-back-line" aria-hidden="true"></i><span>Restore</span></a>
+              <a id="btnPdf" href="#" class="dropdown-item"><i class="ri-file-pdf-line" aria-hidden="true"></i><span>Save as PDF</span></a>
+              <a id="mnPrint" href="#" class="dropdown-item"><i class="ri-printer-line" aria-hidden="true"></i><span>Print</span></a>
+              <a id="mnShare" href="#" class="dropdown-item"><i class="ri-share-line" aria-hidden="true"></i><span>Share</span></a>
+              <a id="mnResend" href="#" class="dropdown-item" target="_blank" rel="noopener"><i class="ri-external-link-line" aria-hidden="true"></i><span>Open in Resend</span></a>
+              <hr class="dropdown-divider">
+              <a id="mnDelete" href="#" class="dropdown-item dropdown-danger"><i class="ri-delete-bin-line" aria-hidden="true"></i><span>Move to Bin</span></a>
             </div>
           </div>
         </nav>
@@ -279,23 +280,43 @@
     <div class="compose d-none" role="dialog" aria-label="Compose message">
       <div class="compose-content">
         <div class="compose-header">
-          <h6 class="compose-title" id="composeTitle">New Message</h6>
+          <a href="#" class="nav-link nav-link-close" role="button" aria-label="Close"><i class="ri-arrow-left-line gm-back" aria-hidden="true"></i><i class="ri-close-line gm-x" aria-hidden="true"></i></a>
+          <div class="compose-heading">
+            <h6 class="compose-title" id="composeTitle">New Message</h6>
+            <span id="cDraftState" class="draft-state" role="status" aria-live="polite"></span>
+          </div>
           <nav class="nav">
             <a href="#" class="nav-link nav-link-minimize" role="button" aria-label="Minimize"><i class="ri-subtract-line" aria-hidden="true"></i></a>
             <a href="#" class="nav-link nav-link-fullscreen" role="button" aria-label="Toggle full screen">
               <i class="ri-fullscreen-line" aria-hidden="true"></i>
               <i class="ri-fullscreen-exit-line" aria-hidden="true"></i>
             </a>
-            <a href="#" class="nav-link nav-link-close" role="button" aria-label="Close"><i class="ri-close-line" aria-hidden="true"></i></a>
+            <button id="cAttachBtn" type="button" class="nav-link" title="Attach files" aria-label="Attach files"><i class="ri-attachment-2" aria-hidden="true"></i></button>
+            <input id="cFile" type="file" multiple class="d-none" tabindex="-1" aria-hidden="true">
+            <button id="cSend" type="button" class="nav-link compose-send" title="Send" aria-label="Send"><i class="ri-send-plane-2-line" aria-hidden="true"></i></button>
+            <div class="dropdown">
+              <a href="#" id="cMore" class="nav-link" data-bs-toggle="dropdown" data-bs-auto-close="outside" aria-expanded="false" title="More" aria-label="More options"><i class="ri-more-2-fill" aria-hidden="true"></i></a>
+              <div class="dropdown-menu dropdown-menu-end">
+                <label class="dropdown-item" for="cHtml"><i class="ri-code-s-slash-line" aria-hidden="true"></i><span>Send as HTML</span><input id="cHtml" type="checkbox" class="form-check-input"></label>
+                <hr class="dropdown-divider">
+                <a href="#" id="cDiscard" class="dropdown-item dropdown-danger"><i class="ri-delete-bin-line" aria-hidden="true"></i><span>Discard draft</span></a>
+              </div>
+            </div>
           </nav>
         </div>
         <div class="compose-body">
-          <div class="form-group">
-            <select id="cFrom" class="form-select" aria-label="From"></select>
+          <div class="form-group from-row">
+            <span class="pill-label">From</span>
+            <input id="cFrom" type="text" class="form-control" inputmode="email" autocomplete="off" autocapitalize="off" spellcheck="false" aria-label="From address" placeholder="name@">
+            <span id="cFromTemp" class="from-temp d-none">Temporary</span>
+            <div class="dropdown from-dd">
+              <button id="cFromBtn" type="button" class="pill-toggle" data-bs-toggle="dropdown" data-bs-popper-config='{"strategy":"fixed"}' aria-expanded="false" title="Choose sender address" aria-label="Choose sender address"><i class="ri-arrow-down-s-line" aria-hidden="true"></i></button>
+              <div id="cFromMenu" class="dropdown-menu dropdown-menu-end"></div>
+            </div>
           </div>
           <div class="form-group has-toggle">
             <div id="cTo" class="pill-box" data-label="To"></div>
-            <button id="cCcToggle" type="button" class="pill-toggle">Cc Bcc</button>
+            <button id="cCcToggle" type="button" class="pill-toggle" title="Add Cc and Bcc" aria-label="Add Cc and Bcc"><i class="ri-arrow-down-s-line" aria-hidden="true"></i></button>
           </div>
           <div class="form-group d-none" id="cCcRow">
             <div id="cCc" class="pill-box" data-label="Cc"></div>
@@ -323,22 +344,6 @@
             </div>
             <div id="cTplPreview" class="tpl-preview"></div>
           </div>
-        </div>
-        <div class="compose-footer">
-          <button id="cSend" type="button" class="btn btn-primary btn-icontext">
-            <i class="ri-send-plane-fill me-2"></i> Send
-          </button>
-          <button id="cAttachBtn" type="button" class="btn btn-white btn-icon ms-2" title="Attach files" aria-label="Attach files">
-            <i class="ri-attachment-2"></i>
-          </button>
-          <input id="cFile" type="file" multiple class="d-none" tabindex="-1" aria-hidden="true">
-          <label class="ms-3 small d-flex align-items-center gap-1 mb-0">
-            <input id="cHtml" type="checkbox"> Send as HTML
-          </label>
-          <span id="cDraftState" class="draft-state" role="status" aria-live="polite"></span>
-          <button id="cDiscard" type="button" class="btn btn-white btn-icon ms-auto" title="Discard" aria-label="Discard draft">
-            <i class="ri-delete-bin-line"></i>
-          </button>
         </div>
       </div>
     </div>
