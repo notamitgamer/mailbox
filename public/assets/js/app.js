@@ -440,9 +440,10 @@ function renderList() {
       + '<span class="swipe-del">Delete<i class="ri-delete-bin-line"></i></span></div>'
       + `<div class="mail-item${m.read ? '' : ' unread'}${m.id === state.openId ? ' active' : ''}" data-id="${esc(m.id)}" role="button" tabindex="0">`
       + avatar(sent ? (m.to[0] || 'Draft') : m.from)
-      + `<div class="mail-item-body"><div class="d-flex align-items-center"><h6 class="mail-subject">${m.read ? '' : '<span class="visually-hidden">Unread. </span>'}${esc(m.subject)}</h6>`
+      + `<div class="mail-item-body"><div class="d-flex align-items-center"><span class="mail-sender${drafts ? ' mail-draft' : ''}">${m.read ? '' : '<span class="visually-hidden">Unread. </span>'}${esc(who)}</span>`
       + `${(m.attachments || []).length ? '<i class="ri-attachment-2 mail-clip" aria-label="Has attachment"></i>' : ''}<span class="mail-time">${esc(fmtDate(m.date))}</span></div>`
-      + `<p class="mail-text"><span class="mail-sender${drafts ? ' mail-draft' : ''}">${esc(who)}</span> \u2013 ${esc(previewOf(m))}</p></div></div></li>`);
+      + `<h6 class="mail-subject">${esc(m.subject)}</h6>`
+      + `<p class="mail-text">${esc(previewOf(m))}</p></div></div></li>`);
   });
   if (state.hasMore && !q) $ul.append('<li class="load-more"><button id="loadMore" class="btn btn-sm btn-outline-primary">Load more</button></li>');
   renderStatus();
@@ -673,19 +674,43 @@ function showReader() {
 
 function hideReader() {
   state.openId = null; state.openMail = null;
+  $('#mailGroup .mail-item.active').removeClass('active'); // no leftover selection colour on the list
   $('.mailcontent-placeholder').removeClass('d-none').siblings().addClass('d-none');
   closeLayer('mail');
 }
 
 // Emails are often laid out for ~600px. Shrink wider ones to the width of the reader instead of cutting them off.
-function fitFrame(frame) {
+// Pinch zoom works on top of the fitted size: `frame._user` is how far the reader has zoomed in from "fitted".
+function applyFrameZoom(frame) {
+  const d = frame.contentDocument; const b = d && d.body; if (!b) return;
+  const z = Math.min(3, (frame._fit || 1) * (frame._user || 1));
+  b.style.zoom = z === 1 ? '' : String(z);
+  frame.style.height = d.documentElement.scrollHeight + 'px';
+}
+function fitFrame(frame, keepZoom) {
   try {
     const d = frame.contentDocument; const b = d && d.body; if (!b) return;
     b.style.zoom = ''; // measure at natural size
     const w = frame.clientWidth; const need = Math.max(d.documentElement.scrollWidth, b.scrollWidth);
-    if (w && need > w + 1) b.style.zoom = String(Math.max(0.3, w / need));
-    frame.style.height = d.documentElement.scrollHeight + 'px';
+    // never shrink below half size: a very wide mail scrolls sideways (or can be pinched) instead of turning tiny
+    frame._fit = w && need > w + 1 ? Math.max(0.5, w / need) : 1;
+    if (!keepZoom) frame._user = 1;
+    applyFrameZoom(frame);
   } catch (e) { /* ignore */ }
+}
+function enablePinchZoom(frame) {
+  const d = frame.contentDocument; if (!d) return;
+  let d0 = 0; let z0 = 1;
+  const dist = (t) => Math.hypot(t[0].clientX - t[1].clientX, t[0].clientY - t[1].clientY);
+  d.addEventListener('touchstart', (e) => { if (e.touches.length === 2) { d0 = dist(e.touches); z0 = frame._user || 1; } else d0 = 0; }, { passive: true });
+  d.addEventListener('touchmove', (e) => {
+    if (e.touches.length !== 2 || !d0) return;
+    e.preventDefault();
+    frame._user = Math.min(5, Math.max(1, z0 * dist(e.touches) / d0));
+    applyFrameZoom(frame);
+  }, { passive: false });
+  d.addEventListener('touchend', (e) => { if (e.touches.length < 2) d0 = 0; }, { passive: true });
+  d.addEventListener('dblclick', () => { frame._user = 1; applyFrameZoom(frame); }); // double-tap back to fitted size
 }
 
 function renderBody(m) {
@@ -701,9 +726,10 @@ function renderBody(m) {
   frame.srcdoc = /<head[^>]*>/i.test(doc) ? doc.replace(/<head[^>]*>/i, (t) => t + fh) : fh + doc;
   frame.addEventListener('load', () => {
     fitFrame(frame);
+    enablePinchZoom(frame);
     // Images can finish loading after the frame's load event; refit whenever one does.
     try {
-      const refit = () => fitFrame(frame);
+      const refit = () => fitFrame(frame, true);
       frame.contentDocument.querySelectorAll('img').forEach((im) => {
         if (!im.complete) { im.addEventListener('load', refit); im.addEventListener('error', refit); }
       });
@@ -1793,6 +1819,8 @@ $('#filterChip button').on('click', () => setFilter('all'));
 $('#btnFilter').on('click', (e) => { e.preventDefault(); setFilter(state.filter === 'unread' ? 'all' : 'unread'); });
 const openSearch = () => { $('.mailbox-header').addClass('searching'); if (!layers.includes('search')) pushLayer('search'); $('#search').trigger('focus'); };
 $('#btnSearch').on('click', (e) => { e.preventDefault(); openSearch(); });
+// the search bar is always visible now: tapping into it counts as opening search (so Back closes it)
+$('#search').on('focus', () => { if (!layers.includes('search')) openSearch(); });
 $('#search').on('blur', () => { if (!$('#search').val()) { $('.mailbox-header').removeClass('searching'); dropLayer('search'); } })
   .on('keydown', (e) => { if (e.key === 'Escape') { $('#search').val('').trigger('input').trigger('blur'); } });
 $('#btnFwdTop, #btnForward').on('click', (e) => { e.preventDefault(); openForward(); });

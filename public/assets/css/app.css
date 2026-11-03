@@ -801,3 +801,76 @@ html { -webkit-font-smoothing: antialiased; -moz-osx-font-smoothing: grayscale; 
 /* keep tonal and outlined buttons in their M3 colours on hover and focus (older rules recoloured them) */
 .btn-secondary:hover, .btn-secondary:focus, .btn-secondary:active { background-color: var(--md-secondary-container); border-color: transparent; color: var(--md-on-secondary-container); }
 .btn-ghost:hover, .btn-ghost:focus, .btn-outline-primary:hover, .btn-outline-primary:focus { background: transparent; border-color: var(--md-outline); color: var(--md-primary); }
+
+
+/* =====================================================================
+   Gmail-style look: pill search bar, flat three-line rows, roomy reader.
+   Appended last; uses the Material 3 tokens above.
+   ===================================================================== */
+
+/* ---- top: one pill with menu, search and avatar; folder name + actions underneath ---- */
+.mailbox-header { display: block; min-height: 0; background: var(--md-surface); padding: calc(10px + env(safe-area-inset-top)) calc(12px + env(safe-area-inset-right)) 2px calc(12px + env(safe-area-inset-left)); }
+.gm-pill { display: flex; align-items: center; gap: 4px; height: 56px; padding: 0 8px 0 4px; background: var(--md-surface-container-high); border-radius: 28px; }
+.gm-pill .mailbox-menu { position: static; width: 48px; height: 48px; flex: none; color: var(--md-on-surface-variant); }
+.gm-pill .mailbox-search { display: flex !important; flex: 1; align-items: center; min-width: 0; height: 100%; margin: 0; padding: 0; background: transparent !important; border: 0 !important; border-radius: 0; box-shadow: none !important; }
+.gm-pill .mailbox-search .form-control,
+.gm-pill .mailbox-search .form-control:focus { height: 100%; padding: 0 4px; font-size: 17px; background: transparent; border: 0; box-shadow: none; outline: 0; color: var(--md-on-surface); }
+.gm-pill .mailbox-search .form-control::placeholder { color: var(--md-on-surface-variant); opacity: 1; }
+.gm-pill .mail-avatar { position: static; width: 36px; height: 36px; margin: 0; flex: none; }
+.gm-pill .mail-avatar span { width: 100%; height: 100%; font-size: 16px; background: var(--md-primary-container); color: var(--md-on-primary-container); }
+.gm-bar { display: flex; align-items: center; gap: 4px; padding: 14px 0 0 8px; }
+.gm-bar .appbar-titles { padding-left: 0; flex-direction: row; align-items: baseline; justify-content: flex-start; gap: 10px; }
+.gm-bar .appbar-title { font-size: 14px; font-weight: 500; color: var(--md-on-surface-variant); letter-spacing: .1px; }
+.gm-bar .appbar-titles small { font-size: 12px; color: var(--md-outline); }
+.gm-bar .appbar-actions > a { width: 36px; height: 36px; font-size: 19px; }
+/* the old "search opens in place of the title" behaviour is gone: the bar is always there */
+.mailbox-header.searching .appbar-titles { display: flex; }
+#btnSearch, .mailbox-header.searching #btnSearch { display: none; }
+
+/* ---- list rows: avatar, then sender + time, subject, one-line preview ---- */
+.mail-group { padding-top: 4px; }
+.mail-row::after { display: none; }
+.mail-day { padding: 10px 20px 4px; font-size: 12px; font-weight: 500; color: var(--md-outline); }
+.mail-row .mail-item, .mail-item { padding: 12px 16px; align-items: flex-start; gap: 16px; }
+.mail-item .mail-avatar { width: 40px; height: 40px; flex: none; margin: 2px 0 0; }
+.mail-item .mail-avatar span { width: 40px; height: 40px; font-size: 18px; }
+.mail-item .mail-item-body > .d-flex { align-items: baseline; gap: 8px; }
+.mail-item .mail-sender { flex: 1; min-width: 0; font-size: 16px; line-height: 1.35; color: var(--md-on-surface-variant); font-weight: 400; }
+.mail-item .mail-time { margin-left: 0; font-size: 12px; color: var(--md-on-surface-variant); }
+.mail-item .mail-subject { display: block; flex: none; width: 100%; margin: 1px 0 0; font-size: 14px; line-height: 1.4; color: var(--md-on-surface-variant); font-weight: 400; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.mail-item .mail-text { margin: 1px 0 0; font-size: 14px; line-height: 1.4; color: var(--md-outline); -webkit-line-clamp: 1; line-clamp: 1; }
+.mail-item.unread .mail-sender, .mail-item.unread .mail-subject { color: var(--md-on-surface); font-weight: 700; }
+.mail-item.unread .mail-time { color: var(--md-on-surface); font-weight: 700; }
+.mail-item:not(.unread) .mail-avatar { opacity: .8; }
+
+/* a selected row is only shown where the list and the mail sit side by side; on phones the reader is its own screen, so nothing stays coloured */
+@media (max-width: 1199.98px) {
+  .mail-group .mail-row .mail-item.active,
+  .mail-group .mail-row .mail-item.active:hover { background-color: #121416 !important; }
+  .mail-item.active .mail-subject, .mail-item.active .mail-sender, .mail-item.active .mail-time { color: inherit; }
+}
+.mail-item.unread.active .mail-sender, .mail-item.unread.active .mail-subject, .mail-item.unread.active .mail-time { color: var(--md-on-surface); }
+@media (max-width: 1199.98px) {
+  .mail-item:not(.unread) .mail-sender, .mail-item:not(.unread) .mail-subject { color: var(--md-on-surface-variant); }
+  .mail-item.unread .mail-sender, .mail-item.unread .mail-subject, .mail-item.unread .mail-time { color: var(--md-on-surface); }
+}
+
+/* ---- reader: big plain subject, sender line, mail edge to edge, two wide pill buttons ---- */
+.mailcontent-subject h4 { font-size: 22px; font-weight: 400; line-height: 1.3; margin: 12px 0 0; padding-left: 4px; }
+.mailcontent-header { align-items: center; padding: 16px 0 10px; }
+.mailcontent-header .mail-avatar { width: 40px; height: 40px; flex: none; }
+.mailcontent-header .mail-avatar span, #rAvatar { font-size: 17px; }
+.mailcontent-sender { padding-left: 12px; flex: 1; }
+.mailcontent-sender h6 { margin: 0; font-size: 15px; font-weight: 600; line-height: 1.3; }
+.mailcontent-sender h6 span { font-size: 13px; font-weight: 400; }
+.mailcontent-sender p { margin: 2px 0 0; font-size: 13px; line-height: 1.3; color: var(--md-on-surface-variant); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.mailcontent-time { font-size: 12px; color: var(--md-on-surface-variant); align-self: flex-start; margin-top: 4px; }
+.mailcontent-body { background: transparent; border: 0; border-radius: 0; box-shadow: none; padding: 0; }
+.mailcontent-body iframe.frame-light { border-radius: 12px; }
+#rBody iframe { touch-action: pan-x pan-y; } /* the reader handles pinch zoom itself */
+.mailcontent-footer { display: flex; gap: 12px; padding: 12px 16px calc(12px + env(safe-area-inset-bottom)); }
+.mailcontent-footer .split-btn { flex: 1; }
+.mailcontent-footer .split-btn .split-lead { flex: 1; justify-content: center; height: 52px; border-radius: 26px 6px 6px 26px; }
+.mailcontent-footer .split-btn .split-trail { height: 52px; width: 52px; padding: 0; border-radius: 6px 26px 26px 6px; }
+.mailcontent-footer #btnForward { flex: 1; justify-content: center; height: 52px; border: 0; border-radius: 26px; background: var(--md-secondary-container); color: var(--md-on-secondary-container); }
+.mailcontent-footer #btnForward:hover, .mailcontent-footer #btnForward:focus { background: var(--md-secondary-container); color: var(--md-on-secondary-container); }

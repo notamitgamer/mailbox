@@ -175,24 +175,27 @@
 
     <div class="mailbox">
       <div class="mailbox-header">
-        <a href="#" class="mailbox-menu" role="button" aria-label="Open menu">
-          <i class="ri-menu-2-fill" aria-hidden="true"></i>
-        </a>
-        <div class="appbar-titles">
-          <strong id="folderTitle" class="appbar-title">Inbox</strong>
-          <small id="countText" role="status"></small>
-        </div>
-        <div class="mailbox-search">
-          <i class="ri-search-line"></i>
-          <input id="search" type="search" class="form-control" placeholder="Search mail" aria-label="Search loaded mail">
-        </div>
-        <div class="appbar-actions">
-          <a href="#" id="btnSearch" role="button" title="Search" aria-label="Search"><i class="ri-search-line" aria-hidden="true"></i></a>
-          <a href="#" id="btnFilter" role="button" title="Show unread only" aria-label="Show unread only" aria-pressed="false"><i class="ri-filter-3-line" aria-hidden="true"></i></a>
-          <a href="#" id="btnEmptyBin" class="d-none" role="button" title="Empty Bin" aria-label="Empty Bin"><i class="ri-delete-bin-2-line" aria-hidden="true"></i></a>
-          <a href="#" id="btnNotify" class="d-none" role="button" title="Turn on notifications" aria-label="Turn on notifications"><i class="ri-notification-off-line" aria-hidden="true"></i></a>
-          <a href="#" id="refresh" role="button" title="Refresh" aria-label="Refresh mail"><i class="ri-refresh-line" aria-hidden="true"></i></a>
+        <div class="gm-pill">
+          <a href="#" class="mailbox-menu" role="button" aria-label="Open menu">
+            <i class="ri-menu-2-fill" aria-hidden="true"></i>
+          </a>
+          <div class="mailbox-search">
+            <input id="search" type="search" class="form-control" placeholder="Search in mail" aria-label="Search loaded mail">
+          </div>
           <a href="#" id="avatar" class="mail-avatar" role="button" title="Sign out" aria-label="Sign out"><span>m</span></a>
+        </div>
+        <div class="gm-bar">
+          <div class="appbar-titles">
+            <strong id="folderTitle" class="appbar-title">Inbox</strong>
+            <small id="countText" role="status"></small>
+          </div>
+          <div class="appbar-actions">
+            <a href="#" id="btnSearch" role="button" title="Search" aria-label="Search"><i class="ri-search-line" aria-hidden="true"></i></a>
+            <a href="#" id="btnFilter" role="button" title="Show unread only" aria-label="Show unread only" aria-pressed="false"><i class="ri-filter-3-line" aria-hidden="true"></i></a>
+            <a href="#" id="btnEmptyBin" class="d-none" role="button" title="Empty Bin" aria-label="Empty Bin"><i class="ri-delete-bin-2-line" aria-hidden="true"></i></a>
+            <a href="#" id="btnNotify" class="d-none" role="button" title="Turn on notifications" aria-label="Turn on notifications"><i class="ri-notification-off-line" aria-hidden="true"></i></a>
+            <a href="#" id="refresh" role="button" title="Refresh" aria-label="Refresh mail"><i class="ri-refresh-line" aria-hidden="true"></i></a>
+          </div>
         </div>
       </div>
 
