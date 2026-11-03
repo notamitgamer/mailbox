@@ -580,3 +580,91 @@ html { touch-action: manipulation; }
 .cs-item { padding: 10px 12px; border-radius: 8px; font-size: 14px; cursor: pointer; }
 .cs-item:hover, .cs-item:focus { background: var(--surface1); }
 .cs-item.on { color: var(--peach); font-weight: 500; }
+
+/* ---- selected row, unread dot, sender colours (graphite + teal) ---- */
+/* Selected (open) mail: soft teal tint with a bar on the left edge */
+.mail-item.active { background: rgba(79, 209, 181, .10); box-shadow: inset 3px 0 0 var(--peach); }
+.mail-item.active .mail-subject, .mail-item.active .mail-sender { color: var(--text); }
+@media (hover: hover) { .mail-item.active:hover { background: rgba(79, 209, 181, .14); } }
+
+/* Unread dot next to the time (the row has no room for a separate marker) */
+.mail-item.unread .mail-time { display: inline-flex; align-items: center; flex: none; }
+.mail-item.unread .mail-time::before {
+  content: ''; width: 8px; height: 8px; margin-right: 6px; border-radius: 50%; flex: none;
+  background: var(--peach); box-shadow: 0 0 0 3px rgba(79, 209, 181, .18);
+}
+
+/* Sender avatars: muted tones that sit well on graphite, all with white text above 4.5:1 contrast */
+.mail-avatar span.green, #rAvatar.green { background: #2f855a; }
+.mail-avatar span.blue, #rAvatar.blue { background: #2b6cb0; }
+.mail-avatar span.indigo, #rAvatar.indigo { background: #5a67d8; }
+.mail-avatar span.red, #rAvatar.red { background: #c0392b; }
+.mail-avatar span.yellow, #rAvatar.yellow { background: #a16207; }
+.mail-avatar span.pink, #rAvatar.pink { background: #b83280; }
+.mail-avatar span.purple, #rAvatar.purple { background: #7c4dbd; }
+.mail-avatar span.slate, #rAvatar.slate { background: #4a5568; }
+
+/* ---- polish: quieter date headers, press feedback, compose button out of the way while reading ---- */
+/* Keep teal for things you act on (unread, selected, buttons); date headers are only labels */
+.mail-day { color: var(--overlay2); }
+.mail-day:not(:first-child) { border-top: 1px solid var(--surface0); margin-top: 6px; }
+
+/* A soft teal flash when a row is pressed, without the grey tap box */
+.mail-item { -webkit-tap-highlight-color: transparent; transition: background-color .15s ease; }
+.mail-item:active { background: rgba(79, 209, 181, .08); }
+
+/* On phones and tablets the reader covers the list, so the compose button only sits over the email: slide it away */
+.menu-compose { transition: transform .2s ease, opacity .2s ease; }
+@media (max-width: 1199.98px) {
+  .mailcontent-show .menu-compose { transform: translateY(24px) scale(.9); opacity: 0; pointer-events: none; }
+}
+@media (prefers-reduced-motion: reduce) { .menu-compose, .mail-item { transition: none; } }
+
+/* ---- no light line at the edge of the list while the reader slides in ---- */
+/* The scrollbar rail had a light translucent background; only the thumb should show, and never while the list is sliding away */
+.ps__rail-y { background: transparent !important; }
+@media (max-width: 1199.98px) {
+  .mailcontent-show .mailbox .ps__rail-y { opacity: 0 !important; transition: none; }
+}
+
+/* ---- visual refinement: smoother, cleaner (looks only) ---- */
+html { -webkit-font-smoothing: antialiased; -moz-osx-font-smoothing: grayscale; text-rendering: optimizeLegibility; }
+
+/* list rows: clearer hierarchy, calmer dividers */
+.mail-row::after { background: rgba(230, 232, 234, .06); }
+.mail-item .mail-subject { color: var(--text); font-size: 15.5px; letter-spacing: -.005em; }
+.mail-item .mail-sender { color: var(--subtext1); }
+.mail-item .mail-text { color: var(--overlay2); line-height: 1.45; }
+.mail-time { font-size: 12px; font-variant-numeric: tabular-nums; letter-spacing: .01em; }
+.mail-item:not(.unread) .mail-subject { color: var(--subtext1); }
+
+/* avatars: soft depth instead of flat discs */
+.mail-avatar span, #rAvatar {
+  font-weight: 600;
+  background-image: linear-gradient(145deg, rgba(255, 255, 255, .16), rgba(0, 0, 0, .12));
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, .08);
+}
+.mailbox-header .mail-avatar span { background-image: none; box-shadow: none; }
+
+/* sidebar: a rounded teal-tinted pill for the current folder */
+.sidebar-body .nav-link.active::before { background-color: rgba(79, 209, 181, .12); border-radius: 14px; }
+.sidebar-body .nav-link::before { border-radius: 14px; }
+.sidebar { border-right-color: rgba(230, 232, 234, .06); }
+
+/* reader: softer card and calmer subject */
+.mailcontent-body { background-color: var(--surface0); border-color: rgba(230, 232, 234, .07); border-radius: 18px; box-shadow: 0 1px 2px rgba(0, 0, 0, .35); }
+.mailcontent-body iframe.frame-light { border-radius: 12px; }
+.mailcontent-subject h4 { font-weight: 500; letter-spacing: -.01em; line-height: 1.28; }
+.mailcontent-header .nav-link, .mailcontent-subject .nav-link { transition: background-color .15s ease, color .15s ease; }
+
+/* buttons: pill shape for the reply and forward row, soft borders */
+.btn-icontext { border-radius: 999px; padding-left: 1.1rem; padding-right: 1.1rem; }
+.btn-secondary { border-color: rgba(230, 232, 234, .10); }
+.btn-ghost { border-color: rgba(230, 232, 234, .10); }
+
+/* compose button: layered shadow with a faint teal glow */
+.menu-compose { border-radius: 18px; box-shadow: 0 8px 22px rgba(0, 0, 0, .5), 0 4px 16px rgba(79, 209, 181, .18), inset 0 1px 0 rgba(255, 255, 255, .22); }
+
+/* menus and dialogs: rounder, with a clear edge */
+.dropdown-menu, .modal-content { border-radius: 16px; border: 1px solid rgba(230, 232, 234, .08); box-shadow: 0 12px 32px rgba(0, 0, 0, .55); }
+.mail-item .mail-time { margin-left: 12px; flex: none; white-space: nowrap; }

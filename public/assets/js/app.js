@@ -675,6 +675,17 @@ function hideReader() {
   closeLayer('mail');
 }
 
+// Emails are often laid out for ~600px. Shrink wider ones to the width of the reader instead of cutting them off.
+function fitFrame(frame) {
+  try {
+    const d = frame.contentDocument; const b = d && d.body; if (!b) return;
+    b.style.zoom = ''; // measure at natural size
+    const w = frame.clientWidth; const need = Math.max(d.documentElement.scrollWidth, b.scrollWidth);
+    if (w && need > w + 1) b.style.zoom = String(Math.max(0.3, w / need));
+    frame.style.height = d.documentElement.scrollHeight + 'px';
+  } catch (e) { /* ignore */ }
+}
+
 function renderBody(m) {
   const doc = m.html
     ? window.DOMPurify.sanitize(m.html, CLEAN)
@@ -687,7 +698,12 @@ function renderBody(m) {
   frame.className = m.html ? 'frame-light' : 'frame-dark';
   frame.srcdoc = /<head[^>]*>/i.test(doc) ? doc.replace(/<head[^>]*>/i, (t) => t + fh) : fh + doc;
   frame.addEventListener('load', () => {
-    try { frame.style.height = frame.contentDocument.documentElement.scrollHeight + 'px'; } catch (e) { /* ignore */ }
+    fitFrame(frame);
+    // Keep the mail fitted when the width changes (rotation, window resize)
+    if (window.ResizeObserver) {
+      let lastW = frame.clientWidth;
+      new ResizeObserver(() => { if (frame.clientWidth !== lastW) { lastW = frame.clientWidth; fitFrame(frame); } }).observe(frame);
+    }
     // Open web links from the top page: popups from a sandboxed frame are unreliable in the Android WebView.
     try {
       frame.contentDocument.addEventListener('click', (ev) => {
