@@ -37,7 +37,21 @@ const parseAddr = (s) => {
   const m = /^\s*"?([^"<]*?)"?\s*<([^>]+)>\s*$/.exec(s || '');
   return m ? { name: m[1].trim(), addr: m[2].trim() } : { name: '', addr: String(s || '').trim() };
 };
-const label = (s) => { const p = parseAddr(s); return p.name || p.addr || 'Unknown'; };
+// Automated senders (no-reply@render.com) have no display name: show the service ("Render") instead of the raw address.
+const PERSONAL_HOST = /^(gmail|googlemail|yahoo|ymail|outlook|hotmail|live|msn|icloud|me|proton|protonmail|pm|aol|zoho|gmx|yandex|rediffmail)\./;
+const AUTO_LOCAL = /^(no-?reply|do-?not-?reply|donotreply|notifications?|notify|support|help|hello|hi|info|team|news|newsletter|mail|mailer|alerts?|updates?|billing|accounts?|admin|events?|contact|service|security|digest|marketing|offers|careers|jobs|receipts?|orders?)([._+-].*)?$/i;
+const BRAND_CASE = { github: 'GitHub', hackerrank: 'HackerRank', linkedin: 'LinkedIn', youtube: 'YouTube', openai: 'OpenAI', paypal: 'PayPal', stackoverflow: 'Stack Overflow', gitlab: 'GitLab', cloudflare: 'Cloudflare', npmjs: 'npm' };
+function brandOf(addr) {
+  const at = String(addr || '').lastIndexOf('@'); if (at < 1) return '';
+  const host = addr.slice(at + 1).toLowerCase();
+  if (!AUTO_LOCAL.test(addr.slice(0, at)) || PERSONAL_HOST.test(host)) return '';
+  const parts = host.split('.'); if (parts.length < 2) return '';
+  const second = parts[parts.length - 2];
+  const name = parts.length > 2 && second.length <= 3 && parts[parts.length - 1].length === 2 ? parts[parts.length - 3] : second; // render.com, bbc.co.uk
+  return BRAND_CASE[name] || name.charAt(0).toUpperCase() + name.slice(1);
+}
+const shownName = (p) => p.name || brandOf(p.addr);
+const label = (s) => { const p = parseAddr(s); return shownName(p) || p.addr || 'Unknown'; };
 const fmtSize = (n) => (n >= 1048576 ? (n / 1048576).toFixed(1) + ' MB' : Math.max(1, Math.round(n / 1024)) + ' KB');
 const fullDate = (iso) => new Date(iso).toLocaleString([], { dateStyle: 'medium', timeStyle: 'short' });
 const fmtDate = (iso) => {
@@ -915,7 +929,8 @@ function renderReader(m) {
   $('#rSubject').text(m.subject);
   const who = sent ? m.to[0] : m.from;
   $('#rAvatar').attr('class', colorOf(who)).text(label(who).charAt(0).toLowerCase());
-  $('#rFrom').html(sent ? `Me <span>&lt;${esc(m.from)}&gt;</span>` : `${esc(p.name || p.addr)}${p.name ? ` <span>&lt;${esc(p.addr)}&gt;</span>` : ''}`);
+  const shown = shownName(p);
+  $('#rFrom').html(sent ? `Me <span>&lt;${esc(m.from)}&gt;</span>` : `${esc(shown || p.addr)}${shown ? ` <span>&lt;${esc(p.addr)}&gt;</span>` : ''}`);
   $('#rTo').text('to: ' + m.to.join(', ') + ((m.cc || []).length ? ' · cc: ' + m.cc.join(', ') : '') + ((m.bcc || []).length ? ' · bcc: ' + m.bcc.join(', ') : ''));
   $('#rTime').text(fullDate(m.date));
   $('#btnReplyTop, #btnReply, #replySplit').toggleClass('d-none', !inbox);
