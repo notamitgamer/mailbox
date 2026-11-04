@@ -1139,10 +1139,10 @@ html { -webkit-font-smoothing: antialiased; -moz-osx-font-smoothing: grayscale; 
 .mail-group .mail-row .mail-item.selected,
 .mail-group .mail-row .mail-item.selected:hover,
 .mail-group .mail-row .mail-item.selected:active { background-color: var(--md-secondary-container) !important; }
-.mail-avatar span > i { display: none; }
+.mail-avatar span > svg { display: none; }
 .mail-item.selected .mail-avatar { opacity: 1; }
 .mail-item.selected .mail-avatar span { font-size: 0; background-color: var(--md-primary); color: var(--md-on-primary, #00382b); }
-.mail-item.selected .mail-avatar span > i { display: inline-block; font-size: 22px; line-height: 1; }
+.mail-item.selected .mail-avatar span > svg { display: block; width: 22px; height: 22px; }
 
 /* contextual bar: replaces the search pill while something is selected */
 .sel-bar { display: none; }
@@ -1152,7 +1152,10 @@ body.selecting .sel-bar {
   border-radius: 28px; background: var(--md-secondary-container); color: var(--md-on-secondary-container); box-shadow: var(--md-elev-2);
 }
 .sel-count { flex: 1; min-width: 0; padding-left: 4px; font-size: 18px; font-weight: 500; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.sel-btn { width: 48px; height: 48px; flex: none; display: inline-flex; align-items: center; justify-content: center; padding: 0; border: 0; border-radius: 50%; background: transparent; color: inherit; font-size: 24px; cursor: pointer; -webkit-tap-highlight-color: transparent; }
+.sel-btn { width: 48px; height: 48px; flex: none; display: inline-flex; align-items: center; justify-content: center; padding: 0; border: 0; border-radius: 50%; background: transparent; color: inherit; cursor: pointer; -webkit-tap-highlight-color: transparent; }
 .sel-btn:hover, .sel-btn:focus-visible { background: rgba(230, 232, 234, .10); }
 .sel-btn:active { background: rgba(230, 232, 234, .16); }
 body.selecting .menu-compose { transform: translateY(24px) scale(.9); opacity: 0; pointer-events: none; }
+
+.sel-btn .m3-icon { width: 24px; height: 24px; display: block; }
+.mail-item.selected .mail-avatar span { display: inline-flex; align-items: center; justify-content: center; }

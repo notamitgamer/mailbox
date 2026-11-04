@@ -428,7 +428,7 @@ function colorOf(who) {
   return COLORS[h % COLORS.length];
 }
 function avatar(who) {
-  return `<div class="mail-avatar"><span class="${colorOf(who)}">${esc(label(who).charAt(0).toLowerCase())}<i class="ri-check-line" aria-hidden="true"></i></span></div>`;
+  return `<div class="mail-avatar"><span class="${colorOf(who)}">${esc(label(who).charAt(0).toLowerCase())}<svg class="m3-icon" viewBox="0 0 24 24" width="22" height="22" fill="currentColor" aria-hidden="true" focusable="false"><path d="M9 16.17 4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z"/></svg></span></div>`;
 }
 
 function setUnread(n) {
