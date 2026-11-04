@@ -41,14 +41,17 @@ const parseAddr = (s) => {
 const PERSONAL_HOST = /^(gmail|googlemail|yahoo|ymail|outlook|hotmail|live|msn|icloud|me|proton|protonmail|pm|aol|zoho|gmx|yandex|rediffmail)\./;
 const AUTO_LOCAL = /^(no-?reply|do-?not-?reply|donotreply|notifications?|notify|support|help|hello|hi|info|team|news|newsletter|mail|mailer|alerts?|updates?|billing|accounts?|admin|events?|contact|service|security|digest|marketing|offers|careers|jobs|receipts?|orders?)([._+-].*)?$/i;
 const BRAND_CASE = { github: 'GitHub', hackerrank: 'HackerRank', linkedin: 'LinkedIn', youtube: 'YouTube', openai: 'OpenAI', paypal: 'PayPal', stackoverflow: 'Stack Overflow', gitlab: 'GitLab', cloudflare: 'Cloudflare', npmjs: 'npm' };
-function brandOf(addr) {
+function serviceOf(addr) { // "render" for anything@mail.render.com; '' for personal mail providers and malformed addresses
   const at = String(addr || '').lastIndexOf('@'); if (at < 1) return '';
   const host = addr.slice(at + 1).toLowerCase();
-  if (!AUTO_LOCAL.test(addr.slice(0, at)) || PERSONAL_HOST.test(host)) return '';
+  if (PERSONAL_HOST.test(host)) return '';
   const parts = host.split('.'); if (parts.length < 2) return '';
   const second = parts[parts.length - 2];
-  const name = parts.length > 2 && second.length <= 3 && parts[parts.length - 1].length === 2 ? parts[parts.length - 3] : second; // render.com, bbc.co.uk
-  return BRAND_CASE[name] || name.charAt(0).toUpperCase() + name.slice(1);
+  return parts.length > 2 && second.length <= 3 && parts[parts.length - 1].length === 2 ? parts[parts.length - 3] : second; // render.com, bbc.co.uk
+}
+function brandOf(addr) {
+  const name = AUTO_LOCAL.test(String(addr || '').slice(0, String(addr || '').lastIndexOf('@'))) ? serviceOf(addr) : '';
+  return name ? BRAND_CASE[name] || name.charAt(0).toUpperCase() + name.slice(1) : '';
 }
 const shownName = (p) => p.name || brandOf(p.addr);
 const label = (s) => { const p = parseAddr(s); return shownName(p) || p.addr || 'Unknown'; };
@@ -416,8 +419,10 @@ const wantedToken = () => new URLSearchParams(location.search).get('t'); // read
 // ---------- list ----------
 const COLORS = ['green', 'blue', 'indigo', 'red', 'yellow', 'pink', 'purple', 'slate'];
 function colorOf(who) {
+  // One colour per service (every Render mail matches, whatever display name it uses); personal addresses get their own colour.
+  const p = parseAddr(who);
   let h = 0;
-  for (const c of label(who)) h = (h * 31 + c.charCodeAt(0)) >>> 0;
+  for (const c of serviceOf(p.addr) || p.addr.toLowerCase() || label(who)) h = (h * 31 + c.charCodeAt(0)) >>> 0;
   return COLORS[h % COLORS.length];
 }
 function avatar(who) {
