@@ -1096,3 +1096,10 @@ html { -webkit-font-smoothing: antialiased; -moz-osx-font-smoothing: grayscale; 
 .tpl-actions .btn { min-height: 40px; padding: 0 22px; border-radius: 20px; font-size: 14px; font-weight: 500; }
 .tpl-actions .btn-white { background: transparent; border-color: transparent; color: var(--md-primary); }
 .tpl-actions .btn-white:hover, .tpl-actions .btn-white:focus { background: rgba(127, 240, 211, .08); border-color: transparent; color: var(--md-primary); }
+
+/* swipe actions: the icon pops in (and the label firms up) once the swipe passes the point where it will fire */
+.swipe-bg span { font-size: 14px; }
+.swipe-bg span i { font-size: 22px; opacity: .65; transform: scale(.7); transition: transform .2s cubic-bezier(.3, 1.6, .5, 1), opacity .15s ease; }
+.mail-row.armed .swipe-bg span i { opacity: 1; transform: scale(1.2); }
+.mail-row.armed .swipe-bg span { font-weight: 700; }
+@media (prefers-reduced-motion: reduce) { .swipe-bg span i { transition: none; } }
