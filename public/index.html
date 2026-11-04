@@ -197,7 +197,7 @@
             <i class="ri-menu-2-fill" aria-hidden="true"></i>
           </a>
           <div class="mailbox-search">
-            <input id="search" type="search" class="form-control" placeholder="Search in mail" aria-label="Search loaded mail">
+            <input id="search" type="search" class="form-control" placeholder="Search in inbox" aria-label="Search loaded mail">
           </div>
           <a href="#" id="avatar" class="mail-avatar" role="button" title="Sign out" aria-label="Sign out"><span>m</span></a>
         </div>
@@ -348,14 +348,6 @@
             <textarea id="cBody" class="form-control" rows="10" aria-label="Message"></textarea>
           </div>
           <div id="cAttach" class="attach-list compose-attach d-none" aria-label="Attached files"></div>
-          <div id="cTpl" class="tpl-bar d-none" role="group" aria-label="Template">
-            <span class="tpl-title">Add a template?</span>
-            <select id="cTplSel" class="form-select form-select-sm" aria-label="Template"></select>
-            <div class="tpl-actions">
-              <button id="cTplSkip" type="button" class="btn btn-sm btn-white">No thanks</button>
-              <button id="cTplAdd" type="button" class="btn btn-sm btn-primary">Add</button>
-            </div>
-          </div>
           <div id="cTplOn" class="tpl-on d-none">
             <div class="tpl-head">
               <span>Template: <strong id="cTplName"></strong></span>
@@ -395,7 +387,7 @@
             <button id="tplExample" type="button" class="btn btn-sm btn-white mb-3">Insert example</button>
             <label class="form-check mb-3">
               <input id="tplDefault" class="form-check-input" type="checkbox">
-              <span class="form-check-label">Offer this one first</span>
+              <span class="form-check-label">Add automatically to new mail</span>
             </label>
             <div class="small text-muted mb-1">Preview</div>
             <div id="tplPreview" class="tpl-preview"></div>

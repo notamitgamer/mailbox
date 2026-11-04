@@ -90,6 +90,7 @@ const dayLabel = (iso) => {
   const diff = Math.round((t - d) / 864e5);
   return diff <= 0 ? 'Today' : diff === 1 ? 'Yesterday' : 'Earlier';
 };
+const SEARCH_HINT = { inbox: 'Search in inbox', sent: 'Search in sent', drafts: 'Search in drafts', trash: 'Search in bin' };
 const TITLES = { inbox: 'Inbox', sent: 'Sent', drafts: 'Drafts', trash: 'Bin' };
 const EMPTY = {
   inbox: ['ri-mail-check-line', 'Inbox zero', 'Nothing new. Enjoy the quiet.'],
@@ -689,7 +690,7 @@ csList.addEventListener('click', (e) => {
 document.addEventListener('pointerdown', (e) => { if (csOpen && !csList.contains(e.target) && !csOpen.btn.contains(e.target)) closeCsList(false); });
 const jqVal = $.fn.val; // .val(x) on a <select> doesn't fire events, so refresh the label ourselves
 $.fn.val = function (v) { const r = jqVal.apply(this, arguments); if (arguments.length) this.filter('select').each((_, el) => csRefresh(el)); return r; };
-['cTplSel', 'tplPick'].forEach((id) => customSelect(document.getElementById(id)));
+['tplPick'].forEach((id) => customSelect(document.getElementById(id)));
 
 function showReader() {
   $('.mailcontent-placeholder').addClass('d-none').siblings().removeClass('d-none');
@@ -1107,15 +1108,18 @@ async function loadTemplates(force) {
 }
 function attachTemplate(t) { // t: { name, html } or null
   $('.compose').data('tpl', t || null);
-  $('#cTplOn').toggleClass('d-none', !t); $('#cTpl').addClass('d-none');
+  $('#cTplOn').toggleClass('d-none', !t);
   if (t) { $('#cTplName').text(t.name || 'Template'); $('#cTplPreview').html(cleanTpl(t.html)); }
 }
+// The template marked "Add automatically" goes into new mail on its own (no prompt that the keyboard could cover).
+// Removing it from one message sticks for that message; drafts keep whatever they were saved with.
 async function offerTemplate() {
-  const list = await loadTemplates();
   const $c = $('.compose');
-  if (!list.length || $c.hasClass('d-none') || $c.data('tpl') || $c.data('tplSkipped')) return;
-  $('#cTplSel').html(list.map((t) => `<option value="${esc(t.id)}"${t.isDefault ? ' selected' : ''}>${esc(t.name)}</option>`).join(''));
-  $('#cTpl').removeClass('d-none');
+  if ($c.data('draftId')) return;
+  const list = await loadTemplates();
+  const def = list.find((t) => t.isDefault);
+  if (!def || $c.hasClass('d-none') || $c.data('tpl') || $c.data('tplSkipped')) return;
+  attachTemplate({ name: def.name, html: def.html }); queueDraft(); composeDirty = false;
 }
 
 // ---- files attached in the composer ----
@@ -1902,6 +1906,7 @@ $('#folders').on('click', '.nav-link', function (e) {
   state.folder = this.dataset.folder;
   if (state.folder === 'inbox') dropLayer('folder'); else if (!layers.includes('folder')) pushLayer('folder');
   $('#folderTitle').text(TITLES[state.folder] || 'Inbox');
+  $('#search').attr('placeholder', SEARCH_HINT[state.folder] || 'Search in mail');
   $('#btnEmptyBin').toggleClass('d-none', state.folder !== 'trash');
   setFilter('all'); $('.mailbox-header').removeClass('searching');
   $('#search').val('');
@@ -2065,11 +2070,6 @@ $(document).on('paste', '.pill-input', function (e) {
 $('#cCcToggle').on('click', (e) => { e.preventDefault(); showCc(true); $('#cCc .pill-input').trigger('focus'); });
 $('#cSubject, #cBody, #cFrom, #cHtml').on('input change', queueDraft);
 
-$('#cTplAdd').on('click', () => {
-  const t = (templates || []).find((x) => x.id === $('#cTplSel').val());
-  if (t) { attachTemplate({ name: t.name, html: t.html }); queueDraft(); }
-});
-$('#cTplSkip').on('click', () => { $('.compose').data('tplSkipped', true); $('#cTpl').addClass('d-none'); });
 $('#cTplRemove').on('click', () => { attachTemplate(null); $('.compose').data('tplSkipped', true); queueDraft(); });
 
 $('#btnRestoreTop, #mnRestore').on('click', (e) => { e.preventDefault(); restoreMail(); });
@@ -2081,7 +2081,7 @@ const TPL_EXAMPLE = '<table cellpadding="0" cellspacing="0" style="font-family:A
   + '  <a href="https://example.com" style="color:#5f6368">https://example.com</a></td></tr>\n</table>';
 const tplModal = () => window.bootstrap.Modal.getOrCreateInstance(document.getElementById('tplModal'));
 function fillTplPick(selectId) {
-  $('#tplPick').html('<option value="">+ New template</option>' + (templates || []).map((t) => `<option value="${esc(t.id)}">${esc(t.name)}${t.isDefault ? ' (first)' : ''}</option>`).join(''))
+  $('#tplPick').html('<option value="">+ New template</option>' + (templates || []).map((t) => `<option value="${esc(t.id)}">${esc(t.name)}${t.isDefault ? ' (auto)' : ''}</option>`).join(''))
     .val(selectId && (templates || []).some((t) => t.id === selectId) ? selectId : (templates && templates[0] ? templates[0].id : ''));
   fillTplEditor();
 }
