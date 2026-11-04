@@ -3,6 +3,8 @@ const $ = window.jQuery;
 const FIREBASE_VER = '11.10.0';
 
 const state = { folder: 'inbox', mails: [], hasMore: false, loading: false, shown: 30, openId: null, openMail: null, unread: 0, filter: 'all' };
+const sel = new Set(); // ids picked with touch-and-hold (multi-select)
+const lp = { t: 0, firedAt: 0 }; // long-press timer and when it last fired
 let config = { aliases: [], fromName: '' };
 const isNative = () => !!(window.Capacitor && window.Capacitor.isNativePlatform && window.Capacitor.isNativePlatform()); // the Android app
 const hap = (kind) => { try { if (window.MailNative) window.MailNative.haptic(kind); else if (navigator.vibrate) navigator.vibrate(kind === 'tick' ? 8 : 16); } catch (e) { /* optional */ } };
@@ -426,7 +428,7 @@ function colorOf(who) {
   return COLORS[h % COLORS.length];
 }
 function avatar(who) {
-  return `<div class="mail-avatar"><span class="${colorOf(who)}">${esc(label(who).charAt(0).toLowerCase())}</span></div>`;
+  return `<div class="mail-avatar"><span class="${colorOf(who)}">${esc(label(who).charAt(0).toLowerCase())}<i class="ri-check-line" aria-hidden="true"></i></span></div>`;
 }
 
 function setUnread(n) {
@@ -457,7 +459,7 @@ function renderList() {
       + (state.folder === 'inbox' ? `<span class="swipe-read"><i class="${m.read ? 'ri-mail-unread-line' : 'ri-mail-open-line'}"></i>${m.read ? 'Unread' : 'Read'}</span>`
         : state.folder === 'trash' ? '<span class="swipe-read"><i class="ri-arrow-go-back-line"></i>Restore</span>' : '')
       + '<span class="swipe-del">Delete<i class="ri-delete-bin-line"></i></span></div>'
-      + `<div class="mail-item${m.read ? '' : ' unread'}${m.id === state.openId ? ' active' : ''}" data-id="${esc(m.id)}" role="button" tabindex="0">`
+      + `<div class="mail-item${m.read ? '' : ' unread'}${m.id === state.openId ? ' active' : ''}${sel.has(m.id) ? ' selected' : ''}" data-id="${esc(m.id)}" role="button" tabindex="0">`
       + avatar(sent ? (m.to[0] || 'Draft') : m.from)
       + `<div class="mail-item-body"><div class="d-flex align-items-center"><span class="mail-sender${drafts ? ' mail-draft' : ''}">${m.read ? '' : '<span class="visually-hidden">Unread. </span>'}${esc(who)}</span>`
       + `${(m.attachments || []).length ? '<i class="ri-attachment-2 mail-clip" aria-label="Has attachment"></i>' : ''}<span class="mail-time">${esc(fmtDate(m.date))}</span></div>`
@@ -465,6 +467,11 @@ function renderList() {
       + `<p class="mail-text">${esc(previewOf(m))}</p></div></div></li>`);
   });
   if (state.hasMore && !q) $ul.append('<li class="load-more"><button id="loadMore" class="btn btn-sm btn-outline-primary">Load more</button></li>');
+  if (sel.size) { // rows that vanished (sync, folder change) drop out of the selection
+    const ids = new Set(items.map((x) => x.id));
+    [...sel].forEach((x) => { if (!ids.has(x)) sel.delete(x); });
+    if (sel.size) paintSelection(); else exitSelect();
+  }
   renderStatus();
   ps.update();
 }
@@ -605,6 +612,7 @@ function undoLayer(name) { // put the screen back the way it was without this la
   else if (name === 'filter') setFilter('all');
   else if (name === 'fab') closeFabUi();
   else if (name === 'split') closeSplitUi();
+  else if (name === 'select') clearSelectionUi();
   else if (name === 'search') { $('#search').val('').trigger('input').trigger('blur'); $('.mailbox-header').removeClass('searching'); }
 }
 function pushLayer(name) { layers.push(name); sync(); }
@@ -1710,14 +1718,85 @@ if ('serviceWorker' in navigator) {
 }
 $('#btnNotify').on('click', (e) => { e.preventDefault(); testPush(); });
 
+// ---------- multi-select: touch and hold a row, tap more rows, then delete ----------
+const LONG_PRESS = 450;
+function paintSelection() {
+  document.body.classList.toggle('selecting', sel.size > 0);
+  $('#mailGroup .mail-item[data-id]').each(function paint() {
+    const on = sel.has(this.dataset.id);
+    this.classList.toggle('selected', on); this.setAttribute('aria-pressed', String(on));
+  });
+  $('#selCount').text(`${sel.size} selected`);
+}
+function clearSelectionUi() { sel.clear(); paintSelection(); }
+function exitSelect() { if (layers.includes('select')) closeLayer('select'); else clearSelectionUi(); }
+function toggleSelect(id) {
+  if (!id) return;
+  if (sel.has(id)) sel.delete(id); else sel.add(id);
+  if (!sel.size) return exitSelect();
+  if (!layers.includes('select')) pushLayer('select');
+  paintSelection();
+}
+function selectAllShown() {
+  $('#mailGroup .mail-item[data-id]').each(function pick() { sel.add(this.dataset.id); });
+  if (sel.size && !layers.includes('select')) pushLayer('select');
+  paintSelection();
+}
+// Delete every selected mail after one confirmation (same server and local steps as deleting a single mail).
+async function deleteMany(ids) {
+  const folder = state.folder; const n = ids.length;
+  if (!n) return;
+  if (!navigator.onLine) return toast('Go online to delete mail.');
+  const hard = folder === 'trash' || folder === 'drafts';
+  const ask = folder === 'drafts' ? { title: `Discard ${n} draft${n > 1 ? 's' : ''}?`, message: 'They are deleted from every device.', ok: 'Discard', danger: true }
+    : hard ? { title: `Delete ${n} message${n > 1 ? 's' : ''} forever?`, message: 'They are removed from every device and cannot be recovered.', ok: 'Delete forever', danger: true }
+      : { title: `Move ${n} message${n > 1 ? 's' : ''} to Bin?`, message: 'You can restore them from the Bin for 30 days.', ok: 'Move to Bin' };
+  if (!(await askConfirm(ask))) return;
+  const done = []; let err = '';
+  for (const id of ids) {
+    try {
+      const row = await store.get(folder, id);
+      await api(`/api/mails/${encodeURIComponent(id)}?folder=${folder}`, { method: 'DELETE' });
+      await store.remove(folder, id);
+      if (hard) fileStore.removeMail(id).catch(() => {});
+      if (meta[folder].total) meta[folder].total -= 1;
+      if (folder === 'inbox') {
+        if (row && !row.read) meta.app.unread = Math.max(0, meta.app.unread - 1);
+        meta.app.pendingRead = meta.app.pendingRead.filter((x) => x !== id);
+      }
+      done.push(id);
+    } catch (e) { err = e.message; break; }
+  }
+  await saveMeta(folder);
+  if (folder === 'inbox') await saveMeta('app');
+  exitSelect();
+  if (state.openId && done.includes(state.openId)) hideReader();
+  await Promise.all(done.map(fadeOutRow));
+  await showFolder();
+  const k = done.length;
+  toast(err ? `${err} (${k} of ${n} done)` : hard ? `${k} deleted` : `${k} moved to Bin`);
+  if (!hard && k) syncFolder('trash', false).then(renderStatus).catch(() => {});
+}
+$('#selClose').on('click', (e) => { e.preventDefault(); exitSelect(); });
+$('#selAll').on('click', (e) => { e.preventDefault(); selectAllShown(); });
+$('#selDelete').on('click', (e) => { e.preventDefault(); deleteMany([...sel]); });
+// The wrapper would otherwise show the browser's copy / search / AI menu on a long press: rows use our own selection instead.
+$('#mailGroup').on('contextmenu', '.mail-item', function noMenu(e) {
+  e.preventDefault();
+  if (Date.now() - lp.firedAt > 1000) toggleSelect(this.dataset.id); // mouse right-click; a touch long press was already handled
+});
+document.addEventListener('keydown', (e) => { if (e.key === 'Escape' && sel.size) exitSelect(); });
+
 // ---------- events ----------
 $('#mailGroup').on('click', '.mail-item', function (e) {
   e.preventDefault();
   if (Date.now() - touch.swipedAt < 400) return; // the finger-lift after a swipe is not a tap
+  if (Date.now() - lp.firedAt < 700) return; // nor is the finger-lift after a long press
+  if (sel.size) return toggleSelect(this.dataset.id);
   openMail(this.dataset.id);
 });
 $('#mailGroup').on('keydown', '.mail-item', function (e) {
-  if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); openMail(this.dataset.id); }
+  if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); if (sel.size) toggleSelect(this.dataset.id); else openMail(this.dataset.id); }
 });
 
 // ---------- touch: swipe a row (right = read/unread, left = delete) and pull the list down to refresh ----------
@@ -1744,7 +1823,11 @@ mailGroupEl.addEventListener('touchstart', (e) => {
   const t = e.touches[0];
   touch.x = t.clientX; touch.y = t.clientY; touch.dx = 0; touch.dy = 0; touch.mode = 'wait';
   const it = e.target.closest('.mail-item');
-  touch.row = it && !it.closest('.skel-row') ? it.closest('.mail-row') : null;
+  touch.row = it && !it.closest('.skel-row') && !sel.size ? it.closest('.mail-row') : null; // no swiping while rows are being selected
+  clearTimeout(lp.t);
+  if (it && !it.closest('.skel-row') && !sel.size) {
+    lp.t = setTimeout(() => { lp.firedAt = Date.now(); touch.mode = null; hap('tick'); toggleSelect(it.dataset.id); }, LONG_PRESS);
+  }
 }, { passive: true });
 mailGroupEl.addEventListener('touchmove', (e) => {
   if (!touch.mode) return;
@@ -1752,6 +1835,7 @@ mailGroupEl.addEventListener('touchmove', (e) => {
   touch.dx = t.clientX - touch.x; touch.dy = t.clientY - touch.y;
   if (touch.mode === 'wait') {
     if (Math.abs(touch.dx) < 8 && Math.abs(touch.dy) < 8) return;
+    clearTimeout(lp.t); // the finger moved: a scroll or swipe, not a long press
     if (Math.abs(touch.dx) > Math.abs(touch.dy) && touch.row) touch.mode = 'swipe';
     else if (touch.dy > 0 && mailGroupEl.scrollTop <= 0) touch.mode = 'pull';
     else { touch.mode = null; return; }
@@ -1771,6 +1855,7 @@ mailGroupEl.addEventListener('touchmove', (e) => {
   }
 }, { passive: false });
 const touchEnd = (e) => {
+  clearTimeout(lp.t);
   const cancelled = e.type === 'touchcancel'; // the system took the touch (gesture, call...): snap back, run nothing
   const mode = touch.mode; touch.mode = null;
   const animate = !window.matchMedia('(prefers-reduced-motion: reduce)').matches;
@@ -1812,6 +1897,7 @@ $('#avatar').on('click', async (e) => {
 
 $('#folders').on('click', '.nav-link', function (e) {
   e.preventDefault();
+  if (sel.size) exitSelect();
   $(this).addClass('active').siblings().removeClass('active');
   state.folder = this.dataset.folder;
   if (state.folder === 'inbox') dropLayer('folder'); else if (!layers.includes('folder')) pushLayer('folder');

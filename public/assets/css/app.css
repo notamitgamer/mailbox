@@ -1128,3 +1128,31 @@ html { -webkit-font-smoothing: antialiased; -moz-osx-font-smoothing: grayscale; 
 .mail-details dt { flex: none; width: 40px; font-weight: 400; color: var(--md-outline); }
 .mail-details dd { margin: 0; min-width: 0; overflow-wrap: anywhere; color: var(--md-on-surface); }
 @media (prefers-reduced-motion: reduce) { .rto-toggle i { transition: none; } }
+
+/* =====================================================================
+   Multi-select: touch and hold a row, tap more rows, delete
+   ===================================================================== */
+/* rows never start the browser's text selection / copy-search-AI menu */
+#mailGroup, #mailGroup * { -webkit-user-select: none; user-select: none; -webkit-touch-callout: none; }
+
+/* selected row: tonal fill, avatar turns into a check */
+.mail-group .mail-row .mail-item.selected,
+.mail-group .mail-row .mail-item.selected:hover,
+.mail-group .mail-row .mail-item.selected:active { background-color: var(--md-secondary-container) !important; }
+.mail-avatar span > i { display: none; }
+.mail-item.selected .mail-avatar { opacity: 1; }
+.mail-item.selected .mail-avatar span { font-size: 0; background-color: var(--md-primary); color: var(--md-on-primary, #00382b); }
+.mail-item.selected .mail-avatar span > i { display: inline-block; font-size: 22px; line-height: 1; }
+
+/* contextual bar: replaces the search pill while something is selected */
+.sel-bar { display: none; }
+body.selecting .sel-bar {
+  display: flex; align-items: center; gap: 4px; position: absolute; z-index: 6; height: 56px; padding: 0 8px 0 4px;
+  top: calc(10px + env(safe-area-inset-top)); left: calc(12px + env(safe-area-inset-left)); right: calc(12px + env(safe-area-inset-right));
+  border-radius: 28px; background: var(--md-secondary-container); color: var(--md-on-secondary-container); box-shadow: var(--md-elev-2);
+}
+.sel-count { flex: 1; min-width: 0; padding-left: 4px; font-size: 18px; font-weight: 500; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.sel-btn { width: 48px; height: 48px; flex: none; display: inline-flex; align-items: center; justify-content: center; padding: 0; border: 0; border-radius: 50%; background: transparent; color: inherit; font-size: 24px; cursor: pointer; -webkit-tap-highlight-color: transparent; }
+.sel-btn:hover, .sel-btn:focus-visible { background: rgba(230, 232, 234, .10); }
+.sel-btn:active { background: rgba(230, 232, 234, .16); }
+body.selecting .menu-compose { transform: translateY(24px) scale(.9); opacity: 0; pointer-events: none; }
