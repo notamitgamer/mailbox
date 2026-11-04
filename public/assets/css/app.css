@@ -1160,6 +1160,16 @@ body.selecting .menu-compose { transform: translateY(24px) scale(.9); opacity: 0
 .sel-btn .m3-icon { width: 24px; height: 24px; display: block; }
 .mail-item.selected .mail-avatar span { display: inline-flex; align-items: center; justify-content: center; }
 
+/* signature template: sits right under the message text like Gmail (no card, no header row), in the page's own colours */
+.compose-body:has(.tpl-on:not(.d-none)) .form-group:has(#cBody) { flex: 0 0 auto !important; min-height: 0 !important; }
+.compose-body:has(.tpl-on:not(.d-none)) #cBody { flex: 0 0 auto !important; height: 120px; min-height: 120px !important; overflow: hidden; }
+.tpl-on { position: relative; margin: 0 16px calc(24px + env(safe-area-inset-bottom)); }
+.tpl-on .tpl-head { position: absolute; top: 0; right: 0; z-index: 1; margin: 0; }
+.tpl-on .tpl-head > span { display: none; }
+.tpl-on .tpl-head button { background: var(--md-surface-container-high); color: var(--md-on-surface-variant); }
+.tpl-on .tpl-preview { max-height: none; overflow: visible; padding: 0; background: transparent; color: var(--md-on-surface); border-radius: 0; }
+.tpl-on .tpl-preview a { color: inherit; }
+
 /* the avatar sat on top of the selection bar and hid its delete button: hide the search pill while selecting */
 body.selecting .gm-pill { visibility: hidden; }
 body.selecting .sel-bar { z-index: 120; }
