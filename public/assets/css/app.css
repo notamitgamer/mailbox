@@ -1109,3 +1109,8 @@ html { -webkit-font-smoothing: antialiased; -moz-osx-font-smoothing: grayscale; 
 .gm-pill { transition: background-color .2s ease, box-shadow .2s ease; }
 .mailbox-header.scrolled .gm-pill { background: var(--md-surface-container-highest); box-shadow: var(--md-elev-2); }
 @media (prefers-reduced-motion: reduce) { .gm-pill { transition: none; } }
+
+/* a deleted / restored row collapses and fades out before the list refreshes */
+.mail-group > li.mail-row { transition: height .24s ease, margin .24s ease, opacity .2s ease, transform .24s ease; }
+.mail-group > li.mail-row.leaving { height: 0 !important; margin-top: 0 !important; margin-bottom: 0 !important; opacity: 0; transform: translateX(-24px); pointer-events: none; }
+@media (prefers-reduced-motion: reduce) { .mail-group > li.mail-row { transition: none; } }

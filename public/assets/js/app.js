@@ -1315,6 +1315,17 @@ const resendUrl = (m, folder) => {
   return id ? 'https://resend.com/emails/' + encodeURIComponent(id) : null;
 };
 
+// Collapse and fade a list row before the list is re-rendered without it.
+function fadeOutRow(id) {
+  const item = document.querySelector(`#mailGroup .mail-item[data-id="${window.CSS && CSS.escape ? CSS.escape(id) : id}"]`);
+  const row = item && item.closest('.mail-row');
+  if (!row || window.matchMedia('(prefers-reduced-motion: reduce)').matches) return Promise.resolve();
+  row.style.height = row.offsetHeight + 'px';
+  void row.offsetHeight; // commit the explicit height so it can animate to 0
+  row.classList.add('leaving');
+  return new Promise((r) => setTimeout(r, 260));
+}
+
 async function deleteMail(id) { // id: a row swiped in the list; none: the message open in the reader
   const m = id ? { id } : state.openMail; const folder = state.folder;
   if (!m) return;
@@ -1338,6 +1349,7 @@ async function deleteMail(id) { // id: a row swiped in the list; none: the messa
     await saveMeta('app');
   }
   if (!id || state.openId === id) hideReader();
+  await fadeOutRow(m.id);
   await showFolder();
   toast(hard ? 'Deleted' : 'Moved to Bin');
   if (!hard) syncFolder('trash', false).then(renderStatus).catch(() => {});
@@ -1359,6 +1371,7 @@ async function restoreMail(id) {
     if (r.folder === 'inbox' && !r.mail.read) { meta.app.unread += 1; await saveMeta('app'); }
   }
   if (!id || state.openId === id) hideReader();
+  await fadeOutRow(m.id);
   await showFolder();
   toast(r.folder === 'sent' ? 'Restored to Sent' : 'Restored to Inbox');
 }
