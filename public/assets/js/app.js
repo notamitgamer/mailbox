@@ -698,18 +698,37 @@ function fitFrame(frame, keepZoom) {
     applyFrameZoom(frame);
   } catch (e) { /* ignore */ }
 }
+// While the fingers are down the zoom is only a GPU transform on the body (no re-layout of the mail on every touch event, which is what made it
+// stutter). The real zoom + height is applied once, when the fingers lift.
 function enablePinchZoom(frame) {
   const d = frame.contentDocument; if (!d) return;
-  let d0 = 0; let z0 = 1;
+  let d0 = 0; let z0 = 1; let s = 1; let raf = 0;
   const dist = (t) => Math.hypot(t[0].clientX - t[1].clientX, t[0].clientY - t[1].clientY);
-  d.addEventListener('touchstart', (e) => { if (e.touches.length === 2) { d0 = dist(e.touches); z0 = frame._user || 1; } else d0 = 0; }, { passive: true });
+  const bodyEl = () => d.body;
+  const paint = () => { raf = 0; const b = bodyEl(); if (b) b.style.transform = s === 1 ? '' : `scale(${s})`; };
+  const commit = () => {
+    if (raf) { cancelAnimationFrame(raf); raf = 0; }
+    const b = bodyEl();
+    if (b) { b.style.transform = ''; b.style.transformOrigin = ''; b.style.willChange = ''; }
+    if (d0) { frame._user = Math.min(5, Math.max(1, z0 * s)); applyFrameZoom(frame); }
+    d0 = 0; s = 1;
+  };
+  d.addEventListener('touchstart', (e) => {
+    if (e.touches.length === 2) {
+      d0 = dist(e.touches) || 1; z0 = frame._user || 1; s = 1;
+      const b = bodyEl(); if (b) { b.style.transformOrigin = '0 0'; b.style.willChange = 'transform'; }
+    } else if (d0) commit();
+  }, { passive: true });
   d.addEventListener('touchmove', (e) => {
     if (e.touches.length !== 2 || !d0) return;
     e.preventDefault();
-    frame._user = Math.min(5, Math.max(1, z0 * dist(e.touches) / d0));
-    applyFrameZoom(frame);
+    const fit = frame._fit || 1;
+    const lo = 1 / z0; const hi = Math.max(lo, Math.min(5 / z0, 3 / (fit * z0)));
+    s = Math.min(hi, Math.max(lo, dist(e.touches) / d0));
+    if (!raf) raf = requestAnimationFrame(paint);
   }, { passive: false });
-  d.addEventListener('touchend', (e) => { if (e.touches.length < 2) d0 = 0; }, { passive: true });
+  d.addEventListener('touchend', (e) => { if (e.touches.length < 2 && d0) commit(); }, { passive: true });
+  d.addEventListener('touchcancel', () => { if (d0) commit(); }, { passive: true });
   d.addEventListener('dblclick', () => { frame._user = 1; applyFrameZoom(frame); }); // double-tap back to fitted size
 }
 
