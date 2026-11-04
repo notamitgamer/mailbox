@@ -1727,6 +1727,8 @@ function paintSelection() {
     this.classList.toggle('selected', on); this.setAttribute('aria-pressed', String(on));
   });
   $('#selCount').text(`${sel.size} selected`);
+  const all = sel.size > 0 && $('#mailGroup .mail-item[data-id]').toArray().every((el) => sel.has(el.dataset.id));
+  $('#selAll').attr({ title: all ? 'Unselect all' : 'Select all', 'aria-label': all ? 'Unselect all' : 'Select all' }).toggleClass('on', all);
 }
 function clearSelectionUi() { sel.clear(); paintSelection(); }
 function exitSelect() { if (layers.includes('select')) closeLayer('select'); else clearSelectionUi(); }
@@ -1738,7 +1740,9 @@ function toggleSelect(id) {
   paintSelection();
 }
 function selectAllShown() {
-  $('#mailGroup .mail-item[data-id]').each(function pick() { sel.add(this.dataset.id); });
+  const items = $('#mailGroup .mail-item[data-id]').toArray();
+  if (items.length && items.every((el) => sel.has(el.dataset.id))) return exitSelect(); // everything is picked: the same button now unselects all
+  items.forEach((el) => sel.add(el.dataset.id));
   if (sel.size && !layers.includes('select')) pushLayer('select');
   paintSelection();
 }
