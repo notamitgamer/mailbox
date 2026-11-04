@@ -585,7 +585,7 @@ async function loadMore() {
 const CLEAN = { WHOLE_DOCUMENT: true, FORBID_TAGS: ['meta', 'base', 'link', 'form', 'iframe', 'object', 'embed', 'script'] };
 const FRAME_CSP = `<meta http-equiv="Content-Security-Policy" content="default-src 'none'; img-src https: data:; style-src 'unsafe-inline'; font-src https: data:"><base target="_blank">`;
 const FRAME_BASE = 'body{margin:0;padding:12px 4px;font:14px/1.5 -apple-system,Segoe UI,Roboto,Arial,sans-serif;word-wrap:break-word;overflow-x:auto}img{max-width:100%!important;height:auto!important}table{max-width:100%}';
-const FRAME_LIGHT = `${FRAME_CSP}<style>html{background:#fff}${FRAME_BASE}body{color:#202124}a{color:#1a56db}</style>`;
+const FRAME_LIGHT = `${FRAME_CSP}<meta name="color-scheme" content="light"><style>html{background:#fff;color-scheme:light}${FRAME_BASE}body{color:#202124}a{color:#1a56db}</style>`;
 const FRAME_DARK = `${FRAME_CSP}<style>html{background:transparent;color-scheme:dark}${FRAME_BASE}body{color:#e6e8ea}a{color:#4fd1b5}</style>`;
 
 // Phone back button / swipe: every screen layered on top of the list (reader, sidebar, compose, popups, a
@@ -762,7 +762,7 @@ function enablePinchZoom(frame) {
 
 function renderBody(m) {
   const doc = m.html
-    ? window.DOMPurify.sanitize(m.html, CLEAN)
+    ? window.DOMPurify.sanitize(m.html, CLEAN).replace(/prefers-color-scheme/gi, 'x-prefers-color-scheme') // a query the browser doesn't know never matches, so the mail keeps its light design on our white page
     : `<html><head></head><body><div style="white-space:pre-wrap">${esc(m.text || '(empty message)')}</div></body></html>`;
   const frame = document.createElement('iframe');
   // Scripts stay off; same-origin is only so we can measure the height.
@@ -770,6 +770,8 @@ function renderBody(m) {
   frame.setAttribute('referrerpolicy', 'no-referrer');
   const fh = m.html ? FRAME_LIGHT : FRAME_DARK;
   frame.className = m.html ? 'frame-light' : 'frame-dark';
+  // The app is dark, so a mail's own "@media (prefers-color-scheme: dark)" rules would switch on (light text) while we keep a white page: unreadable.
+  if (m.html) frame.style.colorScheme = 'light';
   frame.srcdoc = /<head[^>]*>/i.test(doc) ? doc.replace(/<head[^>]*>/i, (t) => t + fh) : fh + doc;
   frame.addEventListener('load', () => {
     fitFrame(frame);
@@ -781,6 +783,9 @@ function renderBody(m) {
         if (!im.complete) { im.addEventListener('load', refit); im.addEventListener('error', refit); }
       });
       setTimeout(refit, 600);
+      if (window.ResizeObserver && frame.contentDocument.body) new ResizeObserver(() => { // late fonts / layout changes: keep the frame as tall as the mail
+        const h = frame.contentDocument.documentElement.scrollHeight; if (h && Math.abs(h - frame.offsetHeight) > 2) frame.style.height = h + 'px';
+      }).observe(frame.contentDocument.body);
     } catch (e) { /* ignore */ }
     // Keep the mail fitted when the width changes (rotation, window resize)
     if (window.ResizeObserver) {
