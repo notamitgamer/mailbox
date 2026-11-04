@@ -249,10 +249,11 @@
             <div class="mail-avatar"><span id="rAvatar"></span></div>
             <div class="mailcontent-sender">
               <h6 id="rFrom"></h6>
-              <p id="rTo"></p>
+              <button id="rToggle" type="button" class="rto-toggle" aria-expanded="false" aria-controls="rDetails" title="Show details"><span id="rTo"></span><i class="ri-arrow-down-s-line" aria-hidden="true"></i></button>
             </div>
             <div class="mailcontent-time" id="rTime"></div>
           </div>
+          <div id="rDetails" class="mail-details d-none"></div>
           <div class="mailcontent-body">
             <div id="rBody"></div>
             <div id="rAttach" class="attach-list"></div>

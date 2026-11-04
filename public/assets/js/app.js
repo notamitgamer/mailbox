@@ -936,7 +936,14 @@ function renderReader(m) {
   $('#rAvatar').attr('class', colorOf(who)).text(label(who).charAt(0).toLowerCase());
   const shown = shownName(p);
   $('#rFrom').html(sent ? `Me <span>&lt;${esc(m.from)}&gt;</span>` : `${esc(shown || p.addr)}${shown ? ` <span>&lt;${esc(p.addr)}&gt;</span>` : ''}`);
-  $('#rTo').text('to: ' + m.to.join(', ') + ((m.cc || []).length ? ' · cc: ' + m.cc.join(', ') : '') + ((m.bcc || []).length ? ' · bcc: ' + m.bcc.join(', ') : ''));
+  // Collapsed: "to me" / "to me, Alex +1". The chevron opens the full From / To / Cc / Bcc / Date list.
+  const mine = new Set((config.aliases || []).map((a) => String(a).toLowerCase()));
+  const nameOf = (a) => { const q = parseAddr(a); return mine.has(q.addr.toLowerCase()) ? 'me' : (shownName(q) || q.addr); };
+  const tos = (m.to || []).map(nameOf); const extra = (m.cc || []).length + (m.bcc || []).length;
+  $('#rTo').text('to ' + (tos.length ? tos.slice(0, 2).join(', ') + (tos.length > 2 ? ` +${tos.length - 2}` : '') : 'nobody') + (extra ? ` · ${extra} cc` : ''));
+  const drow = (k, v) => (v ? `<div><dt>${k}</dt><dd>${esc(v)}</dd></div>` : '');
+  $('#rDetails').addClass('d-none').html('<dl>' + drow('From', m.from) + drow('To', (m.to || []).join(', ')) + drow('Cc', (m.cc || []).join(', ')) + drow('Bcc', (m.bcc || []).join(', ')) + drow('Date', fullDate(m.date)) + '</dl>');
+  $('#rToggle').attr({ 'aria-expanded': 'false', title: 'Show details' });
   $('#rTime').text(fullDate(m.date));
   $('#btnReplyTop, #btnReply, #replySplit').toggleClass('d-none', !inbox);
   $('#mnReply, #mnUnread, #btnUnreadTop').toggleClass('d-none', !inbox);
@@ -1791,6 +1798,12 @@ $('#refresh').on('click', (e) => { e.preventDefault(); syncAll({ reconcile: true
 $('#btnPdf').on('click', (e) => { e.preventDefault(); savePdf(); });
 $('#btnReply, #btnReplyTop').on('click', (e) => { e.preventDefault(); startReply(); });
 $('#mailBack').on('click', (e) => { e.preventDefault(); closeLayer('mail'); });
+$('#rToggle').on('click', function toggleDetails(e) {
+  e.preventDefault();
+  const open = $('#rDetails').hasClass('d-none');
+  $('#rDetails').toggleClass('d-none', !open);
+  $(this).attr({ 'aria-expanded': String(open), title: open ? 'Hide details' : 'Show details' });
+});
 $('#avatar').on('click', async (e) => {
   e.preventDefault();
   if (!navigator.onLine) return toast('Go online to sign out.');
