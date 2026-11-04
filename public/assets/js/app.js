@@ -1115,6 +1115,13 @@ function attachTemplate(t) { // t: { name, html } or null
   $('.compose').data('tpl', t || null);
   $('#cTplOn').toggleClass('d-none', !t);
   if (t) { $('#cTplName').text(t.name || 'Template'); $('#cTplPreview').html(cleanTpl(t.html)); }
+  growBody();
+}
+// With a signature under it the message box grows with its text, so the signature always sits right below the last line.
+function growBody() {
+  const el = document.getElementById('cBody'); if (!el) return;
+  if (!$('.compose').data('tpl')) { el.style.height = ''; return; }
+  el.style.height = '0px'; el.style.height = Math.max(120, el.scrollHeight) + 'px';
 }
 // The template marked "Add automatically" goes into new mail on its own (no prompt that the keyboard could cover).
 // Removing it from one message sticks for that message; drafts keep whatever they were saved with.
@@ -2074,6 +2081,7 @@ $(document).on('paste', '.pill-input', function (e) {
 });
 $('#cCcToggle').on('click', (e) => { e.preventDefault(); showCc(true); $('#cCc .pill-input').trigger('focus'); });
 $('#cSubject, #cBody, #cFrom, #cHtml').on('input change', queueDraft);
+$('#cBody').on('input', growBody);
 
 $('#cTplRemove').on('click', () => { attachTemplate(null); $('.compose').data('tplSkipped', true); queueDraft(); });
 
