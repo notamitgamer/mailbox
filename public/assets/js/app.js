@@ -90,6 +90,7 @@ const dayLabel = (iso) => {
   const diff = Math.round((t - d) / 864e5);
   return diff <= 0 ? 'Today' : diff === 1 ? 'Yesterday' : 'Earlier';
 };
+const SEARCH_HINT = { inbox: 'Search in inbox', sent: 'Search in sent', drafts: 'Search in drafts', trash: 'Search in bin' };
 const TITLES = { inbox: 'Inbox', sent: 'Sent', drafts: 'Drafts', trash: 'Bin' };
 const EMPTY = {
   inbox: ['ri-mail-check-line', 'Inbox zero', 'Nothing new. Enjoy the quiet.'],
@@ -584,7 +585,7 @@ async function loadMore() {
 const CLEAN = { WHOLE_DOCUMENT: true, FORBID_TAGS: ['meta', 'base', 'link', 'form', 'iframe', 'object', 'embed', 'script'] };
 const FRAME_CSP = `<meta http-equiv="Content-Security-Policy" content="default-src 'none'; img-src https: data:; style-src 'unsafe-inline'; font-src https: data:"><base target="_blank">`;
 const FRAME_BASE = 'body{margin:0;padding:12px 4px;font:14px/1.5 -apple-system,Segoe UI,Roboto,Arial,sans-serif;word-wrap:break-word;overflow-x:auto}img{max-width:100%!important;height:auto!important}table{max-width:100%}';
-const FRAME_LIGHT = `${FRAME_CSP}<style>html{background:#fff}${FRAME_BASE}body{color:#202124}a{color:#1a56db}</style>`;
+const FRAME_LIGHT = `${FRAME_CSP}<meta name="color-scheme" content="light"><style>html{background:#fff;color-scheme:light}${FRAME_BASE}body{color:#202124}a{color:#1a56db}</style>`;
 const FRAME_DARK = `${FRAME_CSP}<style>html{background:transparent;color-scheme:dark}${FRAME_BASE}body{color:#e6e8ea}a{color:#4fd1b5}</style>`;
 
 // Phone back button / swipe: every screen layered on top of the list (reader, sidebar, compose, popups, a
@@ -689,7 +690,7 @@ csList.addEventListener('click', (e) => {
 document.addEventListener('pointerdown', (e) => { if (csOpen && !csList.contains(e.target) && !csOpen.btn.contains(e.target)) closeCsList(false); });
 const jqVal = $.fn.val; // .val(x) on a <select> doesn't fire events, so refresh the label ourselves
 $.fn.val = function (v) { const r = jqVal.apply(this, arguments); if (arguments.length) this.filter('select').each((_, el) => csRefresh(el)); return r; };
-['cTplSel', 'tplPick'].forEach((id) => customSelect(document.getElementById(id)));
+['tplPick'].forEach((id) => customSelect(document.getElementById(id)));
 
 function showReader() {
   $('.mailcontent-placeholder').addClass('d-none').siblings().removeClass('d-none');
@@ -761,7 +762,7 @@ function enablePinchZoom(frame) {
 
 function renderBody(m) {
   const doc = m.html
-    ? window.DOMPurify.sanitize(m.html, CLEAN)
+    ? window.DOMPurify.sanitize(m.html, CLEAN).replace(/prefers-color-scheme/gi, 'x-prefers-color-scheme') // a query the browser doesn't know never matches, so the mail keeps its light design on our white page
     : `<html><head></head><body><div style="white-space:pre-wrap">${esc(m.text || '(empty message)')}</div></body></html>`;
   const frame = document.createElement('iframe');
   // Scripts stay off; same-origin is only so we can measure the height.
@@ -769,6 +770,8 @@ function renderBody(m) {
   frame.setAttribute('referrerpolicy', 'no-referrer');
   const fh = m.html ? FRAME_LIGHT : FRAME_DARK;
   frame.className = m.html ? 'frame-light' : 'frame-dark';
+  // The app is dark, so a mail's own "@media (prefers-color-scheme: dark)" rules would switch on (light text) while we keep a white page: unreadable.
+  if (m.html) frame.style.colorScheme = 'light';
   frame.srcdoc = /<head[^>]*>/i.test(doc) ? doc.replace(/<head[^>]*>/i, (t) => t + fh) : fh + doc;
   frame.addEventListener('load', () => {
     fitFrame(frame);
@@ -780,6 +783,9 @@ function renderBody(m) {
         if (!im.complete) { im.addEventListener('load', refit); im.addEventListener('error', refit); }
       });
       setTimeout(refit, 600);
+      if (window.ResizeObserver && frame.contentDocument.body) new ResizeObserver(() => { // late fonts / layout changes: keep the frame as tall as the mail
+        const h = frame.contentDocument.documentElement.scrollHeight; if (h && Math.abs(h - frame.offsetHeight) > 2) frame.style.height = h + 'px';
+      }).observe(frame.contentDocument.body);
     } catch (e) { /* ignore */ }
     // Keep the mail fitted when the width changes (rotation, window resize)
     if (window.ResizeObserver) {
@@ -1107,15 +1113,18 @@ async function loadTemplates(force) {
 }
 function attachTemplate(t) { // t: { name, html } or null
   $('.compose').data('tpl', t || null);
-  $('#cTplOn').toggleClass('d-none', !t); $('#cTpl').addClass('d-none');
+  $('#cTplOn').toggleClass('d-none', !t);
   if (t) { $('#cTplName').text(t.name || 'Template'); $('#cTplPreview').html(cleanTpl(t.html)); }
 }
+// The template marked "Add automatically" goes into new mail on its own (no prompt that the keyboard could cover).
+// Removing it from one message sticks for that message; drafts keep whatever they were saved with.
 async function offerTemplate() {
-  const list = await loadTemplates();
   const $c = $('.compose');
-  if (!list.length || $c.hasClass('d-none') || $c.data('tpl') || $c.data('tplSkipped')) return;
-  $('#cTplSel').html(list.map((t) => `<option value="${esc(t.id)}"${t.isDefault ? ' selected' : ''}>${esc(t.name)}</option>`).join(''));
-  $('#cTpl').removeClass('d-none');
+  if ($c.data('draftId')) return;
+  const list = await loadTemplates();
+  const def = list.find((t) => t.isDefault);
+  if (!def || $c.hasClass('d-none') || $c.data('tpl') || $c.data('tplSkipped')) return;
+  attachTemplate({ name: def.name, html: def.html }); queueDraft(); composeDirty = false;
 }
 
 // ---- files attached in the composer ----
@@ -1906,6 +1915,7 @@ $('#folders').on('click', '.nav-link', function (e) {
   state.folder = this.dataset.folder;
   if (state.folder === 'inbox') dropLayer('folder'); else if (!layers.includes('folder')) pushLayer('folder');
   $('#folderTitle').text(TITLES[state.folder] || 'Inbox');
+  $('#search').attr('placeholder', SEARCH_HINT[state.folder] || 'Search in mail');
   $('#btnEmptyBin').toggleClass('d-none', state.folder !== 'trash');
   setFilter('all'); $('.mailbox-header').removeClass('searching');
   $('#search').val('');
@@ -2069,11 +2079,6 @@ $(document).on('paste', '.pill-input', function (e) {
 $('#cCcToggle').on('click', (e) => { e.preventDefault(); showCc(true); $('#cCc .pill-input').trigger('focus'); });
 $('#cSubject, #cBody, #cFrom, #cHtml').on('input change', queueDraft);
 
-$('#cTplAdd').on('click', () => {
-  const t = (templates || []).find((x) => x.id === $('#cTplSel').val());
-  if (t) { attachTemplate({ name: t.name, html: t.html }); queueDraft(); }
-});
-$('#cTplSkip').on('click', () => { $('.compose').data('tplSkipped', true); $('#cTpl').addClass('d-none'); });
 $('#cTplRemove').on('click', () => { attachTemplate(null); $('.compose').data('tplSkipped', true); queueDraft(); });
 
 $('#btnRestoreTop, #mnRestore').on('click', (e) => { e.preventDefault(); restoreMail(); });
@@ -2085,7 +2090,7 @@ const TPL_EXAMPLE = '<table cellpadding="0" cellspacing="0" style="font-family:A
   + '  <a href="https://example.com" style="color:#5f6368">https://example.com</a></td></tr>\n</table>';
 const tplModal = () => window.bootstrap.Modal.getOrCreateInstance(document.getElementById('tplModal'));
 function fillTplPick(selectId) {
-  $('#tplPick').html('<option value="">+ New template</option>' + (templates || []).map((t) => `<option value="${esc(t.id)}">${esc(t.name)}${t.isDefault ? ' (first)' : ''}</option>`).join(''))
+  $('#tplPick').html('<option value="">+ New template</option>' + (templates || []).map((t) => `<option value="${esc(t.id)}">${esc(t.name)}${t.isDefault ? ' (auto)' : ''}</option>`).join(''))
     .val(selectId && (templates || []).some((t) => t.id === selectId) ? selectId : (templates && templates[0] ? templates[0].id : ''));
   fillTplEditor();
 }
