@@ -1103,3 +1103,9 @@ html { -webkit-font-smoothing: antialiased; -moz-osx-font-smoothing: grayscale; 
 .mail-row.armed .swipe-bg span i { opacity: 1; transform: scale(1.2); }
 .mail-row.armed .swipe-bg span { font-weight: 700; }
 @media (prefers-reduced-motion: reduce) { .swipe-bg span i { transition: none; } }
+
+/* search pill: lifts and tints once the list scrolls under it */
+.mailbox-header { z-index: 3; }
+.gm-pill { transition: background-color .2s ease, box-shadow .2s ease; }
+.mailbox-header.scrolled .gm-pill { background: var(--md-surface-container-highest); box-shadow: var(--md-elev-2); }
+@media (prefers-reduced-motion: reduce) { .gm-pill { transition: none; } }

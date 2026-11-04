@@ -1685,6 +1685,13 @@ const touch = { x: 0, y: 0, dx: 0, dy: 0, mode: null, row: null, swipedAt: 0 };
 const SWIPE_AT = 90; const SWIPE_MAX = 130; const PULL_AT = 70;
 const mailGroupEl = document.getElementById('mailGroup');
 const ptrEl = document.getElementById('ptr');
+// search pill: tint + shadow once the list has scrolled under it (class flips only when the state changes)
+const headerEl = document.querySelector('.mailbox-header');
+let pillScrolled = false;
+mailGroupEl.addEventListener('scroll', () => {
+  const s = mailGroupEl.scrollTop > 2;
+  if (s !== pillScrolled) { pillScrolled = s; headerEl.classList.toggle('scrolled', s); }
+}, { passive: true });
 const slide = (el, x, animate) => { el.style.transition = animate ? 'transform .2s ease' : 'none'; el.style.transform = x ? `translateX(${x}px)` : ''; };
 const pullTo = (px, animate) => {
   mailGroupEl.style.transition = animate ? 'transform .2s ease' : 'none';
