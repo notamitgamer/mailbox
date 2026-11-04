@@ -39,7 +39,17 @@
       .mail-item {
         position: relative !important;
         overflow: hidden !important;
-        background-color: #121416 !important;
+      }
+
+      /* Page stays #121416; every row is its own lighter rounded card with a gap between rows */
+      .mail-group > li.mail-row {
+        background-color: transparent !important;
+        border-radius: 16px !important;
+        margin: 0 12px 8px !important;
+      }
+      .mail-item {
+        background-color: #1b1e21 !important;
+        border-radius: 16px !important;
       }
 
       /* Background delete reveal layer */
@@ -63,7 +73,7 @@
       .mail-item > a {
         position: relative !important;
         z-index: 1 !important;
-        background-color: #121416 !important;
+        background-color: #1b1e21 !important;
         color: #e6e8ea !important;
       }
 
