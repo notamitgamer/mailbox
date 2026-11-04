@@ -1114,14 +1114,7 @@ async function loadTemplates(force) {
 function attachTemplate(t) { // t: { name, html } or null
   $('.compose').data('tpl', t || null);
   $('#cTplOn').toggleClass('d-none', !t);
-  if (t) { $('#cTplName').text(t.name || 'Template'); $('#cTplPreview').html(cleanTpl(t.html)); }
-  growBody();
-}
-// With a signature under it the message box grows with its text, so the signature always sits right below the last line.
-function growBody() {
-  const el = document.getElementById('cBody'); if (!el) return;
-  if (!$('.compose').data('tpl')) { el.style.height = ''; return; }
-  el.style.height = '0px'; el.style.height = Math.max(120, el.scrollHeight) + 'px';
+  if (t) $('#cTplPreview').html(cleanTpl(t.html));
 }
 // The template marked "Add automatically" goes into new mail on its own (no prompt that the keyboard could cover).
 // Removing it from one message sticks for that message; drafts keep whatever they were saved with.
@@ -1324,10 +1317,10 @@ async function sendMail() {
     if (draftBusy) await draftBusy.catch(() => {});
     const d = composeData(); const $c = $('.compose'); const tpl = $c.data('tpl');
     const payload = { to: d.to, cc: d.cc, bcc: d.bcc, subject: d.subject, from: d.from || undefined, replyToId: d.replyToId, draftId: $c.data('draftId') || undefined, attachments: d.attachments };
-    if (tpl) { // message first, then the template block
+    if (tpl) { // the template block first (it sits at the top of the writing area), then the message
       const head = d.htmlMode ? d.text : `<div style="white-space:pre-wrap">${esc(d.text)}</div>`;
-      payload.html = `${head}<br><br>${tpl.html}`;
-      if (!d.htmlMode) payload.text = `${d.text}\n\n${new DOMParser().parseFromString(cleanTpl(tpl.html), 'text/html').body.textContent.replace(/\n{3,}/g, '\n\n').trim()}`;
+      payload.html = `${tpl.html}<br><br>${head}`;
+      if (!d.htmlMode) payload.text = `${new DOMParser().parseFromString(cleanTpl(tpl.html), 'text/html').body.textContent.replace(/\n{3,}/g, '\n\n').trim()}\n\n${d.text}`;
     } else payload[d.htmlMode ? 'html' : 'text'] = d.text;
     await api('/api/send', { method: 'POST', body: JSON.stringify(payload) });
     const did = payload.draftId;
@@ -2085,9 +2078,15 @@ $(document).on('paste', '.pill-input', function (e) {
 });
 $('#cCcToggle').on('click', (e) => { e.preventDefault(); showCc(true); $('#cCc .pill-input').trigger('focus'); });
 $('#cSubject, #cBody, #cFrom, #cHtml').on('input change', queueDraft);
-$('#cBody').on('input', growBody);
 
-$('#cTplRemove').on('click', () => { attachTemplate(null); $('.compose').data('tplSkipped', true); queueDraft(); });
+// Like Gmail: the signature is the first thing in the writing area, and Backspace at the very start of the message removes it.
+function dropTplOnBackspace(e) {
+  const el = document.getElementById('cBody'); const $c = $('.compose');
+  if (!$c.data('tpl') || el.selectionStart !== 0 || el.selectionEnd !== 0) return;
+  e.preventDefault(); attachTemplate(null); $c.data('tplSkipped', true); queueDraft();
+}
+$('#cBody').on('keydown', (e) => { if (e.key === 'Backspace') dropTplOnBackspace(e); });
+document.getElementById('cBody').addEventListener('beforeinput', (e) => { if (e.inputType === 'deleteContentBackward') dropTplOnBackspace(e); });
 
 $('#btnRestoreTop, #mnRestore').on('click', (e) => { e.preventDefault(); restoreMail(); });
 $('#btnEmptyBin').on('click', (e) => { e.preventDefault(); emptyBin(); });
