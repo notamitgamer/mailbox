@@ -1115,6 +1115,13 @@ function attachTemplate(t) { // t: { name, html } or null
   $('.compose').data('tpl', t || null);
   $('#cTplOn').toggleClass('d-none', !t);
   if (t) $('#cTplPreview').html(cleanTpl(t.html));
+  growBody();
+}
+// With a signature under it the message box grows with its text, so the signature always sits right below the last line.
+function growBody() {
+  const el = document.getElementById('cBody'); if (!el) return;
+  if (!$('.compose').data('tpl')) { el.style.height = ''; return; }
+  el.style.height = '0px'; el.style.height = Math.max(120, el.scrollHeight) + 'px';
 }
 // The template marked "Add automatically" goes into new mail on its own (no prompt that the keyboard could cover).
 // Removing it from one message sticks for that message; drafts keep whatever they were saved with.
@@ -1317,10 +1324,10 @@ async function sendMail() {
     if (draftBusy) await draftBusy.catch(() => {});
     const d = composeData(); const $c = $('.compose'); const tpl = $c.data('tpl');
     const payload = { to: d.to, cc: d.cc, bcc: d.bcc, subject: d.subject, from: d.from || undefined, replyToId: d.replyToId, draftId: $c.data('draftId') || undefined, attachments: d.attachments };
-    if (tpl) { // the template block first (it sits at the top of the writing area), then the message
+    if (tpl) { // message first, then the template block
       const head = d.htmlMode ? d.text : `<div style="white-space:pre-wrap">${esc(d.text)}</div>`;
-      payload.html = `${tpl.html}<br><br>${head}`;
-      if (!d.htmlMode) payload.text = `${new DOMParser().parseFromString(cleanTpl(tpl.html), 'text/html').body.textContent.replace(/\n{3,}/g, '\n\n').trim()}\n\n${d.text}`;
+      payload.html = `${head}<br><br>${tpl.html}`;
+      if (!d.htmlMode) payload.text = `${d.text}\n\n${new DOMParser().parseFromString(cleanTpl(tpl.html), 'text/html').body.textContent.replace(/\n{3,}/g, '\n\n').trim()}`;
     } else payload[d.htmlMode ? 'html' : 'text'] = d.text;
     await api('/api/send', { method: 'POST', body: JSON.stringify(payload) });
     const did = payload.draftId;
@@ -1729,6 +1736,8 @@ $('#btnNotify').on('click', (e) => { e.preventDefault(); testPush(); });
 
 // ---------- multi-select: touch and hold a row, tap more rows, then delete ----------
 const LONG_PRESS = 450;
+const ICON_SELECT = '<svg class="m3-icon" viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M4 4h16v16H4z" stroke-dasharray="2.6 2.6"/><path d="M8 8h8v8H8z" fill="currentColor"/></svg>';
+const ICON_DESELECT = '<svg class="m3-icon" viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M4 4h16v16H4z" stroke-dasharray="2.6 2.6"/><path d="M5 19 19 5"/></svg>';
 function paintSelection() {
   document.body.classList.toggle('selecting', sel.size > 0);
   $('#mailGroup .mail-item[data-id]').each(function paint() {
@@ -1737,7 +1746,7 @@ function paintSelection() {
   });
   $('#selCount').text(`${sel.size} selected`);
   const all = sel.size > 0 && $('#mailGroup .mail-item[data-id]').toArray().every((el) => sel.has(el.dataset.id));
-  $('#selAll').attr({ title: all ? 'Unselect all' : 'Select all', 'aria-label': all ? 'Unselect all' : 'Select all' }).toggleClass('on', all);
+  $('#selAll').attr({ title: all ? 'Unselect all' : 'Select all', 'aria-label': all ? 'Unselect all' : 'Select all' }).toggleClass('on', all).html(all ? ICON_DESELECT : ICON_SELECT);
 }
 function clearSelectionUi() { sel.clear(); paintSelection(); }
 function exitSelect() { if (layers.includes('select')) closeLayer('select'); else clearSelectionUi(); }
@@ -2079,14 +2088,13 @@ $(document).on('paste', '.pill-input', function (e) {
 $('#cCcToggle').on('click', (e) => { e.preventDefault(); showCc(true); $('#cCc .pill-input').trigger('focus'); });
 $('#cSubject, #cBody, #cFrom, #cHtml').on('input change', queueDraft);
 
-// Like Gmail: the signature is the first thing in the writing area, and Backspace at the very start of the message removes it.
-function dropTplOnBackspace(e) {
-  const el = document.getElementById('cBody'); const $c = $('.compose');
-  if (!$c.data('tpl') || el.selectionStart !== 0 || el.selectionEnd !== 0) return;
-  e.preventDefault(); attachTemplate(null); $c.data('tplSkipped', true); queueDraft();
-}
-$('#cBody').on('keydown', (e) => { if (e.key === 'Backspace') dropTplOnBackspace(e); });
-document.getElementById('cBody').addEventListener('beforeinput', (e) => { if (e.inputType === 'deleteContentBackward') dropTplOnBackspace(e); });
+$('#cBody').on('input', growBody);
+// The signature sits under the message. Tap it (it takes the cursor) and press Backspace or Delete to remove it; nothing else can be typed into it.
+function dropTpl() { attachTemplate(null); $('.compose').data('tplSkipped', true); queueDraft(); const el = document.getElementById('cBody'); el.focus(); el.setSelectionRange(el.value.length, el.value.length); }
+const tplEl = document.getElementById('cTplPreview');
+tplEl.addEventListener('beforeinput', (e) => { e.preventDefault(); if (/^delete/.test(e.inputType)) dropTpl(); });
+tplEl.addEventListener('keydown', (e) => { if (e.key === 'Backspace' || e.key === 'Delete') { e.preventDefault(); dropTpl(); } });
+['paste', 'cut', 'drop'].forEach((t) => tplEl.addEventListener(t, (e) => e.preventDefault()));
 
 $('#btnRestoreTop, #mnRestore').on('click', (e) => { e.preventDefault(); restoreMail(); });
 $('#btnEmptyBin').on('click', (e) => { e.preventDefault(); emptyBin(); });
