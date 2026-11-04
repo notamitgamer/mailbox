@@ -1159,3 +1159,11 @@ body.selecting .menu-compose { transform: translateY(24px) scale(.9); opacity: 0
 
 .sel-btn .m3-icon { width: 24px; height: 24px; display: block; }
 .mail-item.selected .mail-avatar span { display: inline-flex; align-items: center; justify-content: center; }
+
+/* the avatar sat on top of the selection bar and hid its delete button: hide the search pill while selecting */
+body.selecting .gm-pill { visibility: hidden; }
+body.selecting .sel-bar { z-index: 120; }
+.sel-btn.on { background: rgba(79, 209, 181, .22); }
+
+/* day labels (Yesterday, Earlier) stay pinned at the top of the list instead of being cut off behind the count row */
+.mail-group > li.mail-day { position: sticky !important; top: 0; z-index: 5; overflow: visible !important; background-color: var(--md-surface, #121416); }
