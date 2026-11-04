@@ -1045,3 +1045,43 @@ html { -webkit-font-smoothing: antialiased; -moz-osx-font-smoothing: grayscale; 
 .mailcontent-subject .nav-link:active { background: rgba(230, 232, 234, .12); }
 .mailcontent-subject .nav-link { color: var(--md-on-surface-variant); }
 .sidebar-label { text-transform: none; }
+
+/* =====================================================================
+   Left pane: roomier layout and Gmail-style full-width pills
+   ===================================================================== */
+/* phone drawer: a little wider (the mailbox slides over by the same amount) */
+@media (max-width: 767.98px) {
+  :root { --sb-w: min(300px, 86vw); }
+  .sidebar { width: var(--sb-w); left: calc(-1 * var(--sb-w)); }
+  .sidebar-show .sidebar { left: 0; }
+  .sidebar-show .mailbox { transform: translateX(var(--sb-w)); }
+}
+.sidebar-header { height: 76px; padding: 4px 28px 0; }
+.sidebar-logo { font-size: 22px; }
+.sidebar-body { padding: 8px 12px calc(110px + env(safe-area-inset-bottom)); overflow-y: auto; max-height: calc(100vh - 76px); box-sizing: border-box; }
+
+/* section titles */
+.sidebar-label { margin: 0; padding: 16px 16px 8px; font-size: 13px; }
+.sidebar-body .nav + .sidebar-label { margin-top: 12px; padding-top: 20px; border-top: 1px solid var(--md-outline-variant); }
+.sidebar-body .nav.flex-column { margin-bottom: 0 !important; }
+
+/* rows: full-width rounded pills, current folder is the filled one */
+.sidebar-body .nav-link { height: 52px; padding: 0 16px; border-radius: 26px; }
+.sidebar-body .nav-link + .nav-link { margin-top: 4px; }
+.sidebar-body .nav-link::before, .sidebar-body .nav-link.active::before { top: 0; bottom: 0; left: 0; right: 0; border-radius: 26px; }
+.sidebar-body .nav-link i { font-size: 22px; }
+.sidebar-body .nav-link span { margin-left: 16px; font-size: 15px; }
+.sidebar-body .nav-link small { font-size: 14px; }
+
+/* storage */
+.storage-box { padding: 0 16px; }
+.storage-row { flex-wrap: wrap; row-gap: 2px; }
+.storage-row strong { white-space: nowrap; }
+.storage-bar { margin: 12px 0 8px; }
+.storage-cap { margin-bottom: 16px; line-height: 1.45; }
+.storage-auto { margin-bottom: 16px; }
+.storage-clear { width: 100%; justify-content: center; padding: 10px 16px; border-radius: 20px; }
+
+/* build info */
+.sidebar-footer { padding: 12px 28px calc(14px + env(safe-area-inset-bottom)); }
+.sidebar-footer .sidebar-label { padding: 0 0 4px; }
