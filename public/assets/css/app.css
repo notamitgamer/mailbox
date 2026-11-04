@@ -830,6 +830,11 @@ html { -webkit-font-smoothing: antialiased; -moz-osx-font-smoothing: grayscale; 
 /* ---- list rows: avatar, then sender + time, subject, one-line preview ---- */
 .mail-group { padding-top: 4px; }
 .mail-row::after { display: none; }
+/* card rows: lighter rounded card per mail on the plain page background, swipe layer clipped to the same radius */
+.mail-row { border-radius: 16px; }
+.mail-row + .mail-row { margin-top: 0; }
+.swipe-bg { border-radius: 16px; }
+.mail-row .mail-item, .mail-item { border-radius: 16px; background-color: var(--md-surface-container); }
 .mail-day { padding: 10px 20px 4px; font-size: 12px; font-weight: 500; color: var(--md-outline); }
 .mail-row .mail-item, .mail-item { padding: 12px 16px; align-items: flex-start; gap: 16px; }
 .mail-item .mail-avatar { width: 40px; height: 40px; flex: none; margin: 2px 0 0; }
@@ -846,7 +851,7 @@ html { -webkit-font-smoothing: antialiased; -moz-osx-font-smoothing: grayscale; 
 /* a selected row is only shown where the list and the mail sit side by side; on phones the reader is its own screen, so nothing stays coloured */
 @media (max-width: 1199.98px) {
   .mail-group .mail-row .mail-item.active,
-  .mail-group .mail-row .mail-item.active:hover { background-color: #121416 !important; }
+  .mail-group .mail-row .mail-item.active:hover { background-color: #1b1e21 !important; }
   .mail-item.active .mail-subject, .mail-item.active .mail-sender, .mail-item.active .mail-time { color: inherit; }
 }
 .mail-item.unread.active .mail-sender, .mail-item.unread.active .mail-subject, .mail-item.unread.active .mail-time { color: var(--md-on-surface); }
@@ -1040,3 +1045,117 @@ html { -webkit-font-smoothing: antialiased; -moz-osx-font-smoothing: grayscale; 
 .mailcontent-subject .nav-link:active { background: rgba(230, 232, 234, .12); }
 .mailcontent-subject .nav-link { color: var(--md-on-surface-variant); }
 .sidebar-label { text-transform: none; }
+
+/* =====================================================================
+   Left pane: roomier layout and Gmail-style full-width pills
+   ===================================================================== */
+/* phone drawer: a little wider (the mailbox slides over by the same amount) */
+@media (max-width: 767.98px) {
+  :root { --sb-w: min(300px, 86vw); }
+  .sidebar { width: var(--sb-w); left: calc(-1 * var(--sb-w)); }
+  .sidebar-show .sidebar { left: 0; }
+  .sidebar-show .mailbox { transform: translateX(var(--sb-w)); }
+}
+.sidebar-header { height: 76px; padding: 4px 28px 0; }
+.sidebar-logo { font-size: 22px; }
+.sidebar-body { padding: 8px 12px calc(110px + env(safe-area-inset-bottom)); overflow-y: auto; max-height: calc(100vh - 76px); box-sizing: border-box; }
+
+/* section titles */
+.sidebar-label { margin: 0; padding: 16px 16px 8px; font-size: 13px; }
+.sidebar-body .nav + .sidebar-label { margin-top: 12px; padding-top: 20px; border-top: 1px solid var(--md-outline-variant); }
+.sidebar-body .nav.flex-column { margin-bottom: 0 !important; }
+
+/* rows: full-width rounded pills, current folder is the filled one */
+.sidebar-body .nav-link { height: 52px; padding: 0 16px; border-radius: 26px; }
+.sidebar-body .nav-link + .nav-link { margin-top: 4px; }
+.sidebar-body .nav-link::before, .sidebar-body .nav-link.active::before { top: 0; bottom: 0; left: 0; right: 0; border-radius: 26px; }
+.sidebar-body .nav-link i { font-size: 22px; }
+.sidebar-body .nav-link span { margin-left: 16px; font-size: 15px; }
+.sidebar-body .nav-link small { font-size: 14px; }
+
+/* storage */
+.storage-box { padding: 0 16px; }
+.storage-row { flex-wrap: wrap; row-gap: 2px; }
+.storage-row strong { white-space: nowrap; }
+.storage-bar { margin: 12px 0 8px; }
+.storage-cap { margin-bottom: 16px; line-height: 1.45; }
+.storage-auto { margin-bottom: 16px; }
+.storage-clear { width: 100%; justify-content: center; padding: 10px 16px; border-radius: 20px; }
+
+/* build info */
+.sidebar-footer { padding: 12px 28px calc(14px + env(safe-area-inset-bottom)); }
+.sidebar-footer .sidebar-label { padding: 0 0 4px; }
+
+/* =====================================================================
+   "Add a template?" card: title, full-width picker, actions on their own row
+   ===================================================================== */
+.tpl-bar { display: flex; flex-direction: column; align-items: stretch; flex-wrap: nowrap; gap: 12px; margin: 12px 16px calc(16px + env(safe-area-inset-bottom)); padding: 16px; border-radius: 20px; }
+.tpl-bar .tpl-title { font-size: 15px; font-weight: 500; line-height: 1.3; color: var(--md-on-surface); }
+.tpl-bar .form-select, .tpl-bar .cs-btn { width: 100%; max-width: none; flex: none; min-height: 48px; border-radius: 12px; }
+.tpl-actions { display: flex; justify-content: flex-end; align-items: center; gap: 8px; }
+.tpl-actions .btn { min-height: 40px; padding: 0 22px; border-radius: 20px; font-size: 14px; font-weight: 500; }
+.tpl-actions .btn-white { background: transparent; border-color: transparent; color: var(--md-primary); }
+.tpl-actions .btn-white:hover, .tpl-actions .btn-white:focus { background: rgba(127, 240, 211, .08); border-color: transparent; color: var(--md-primary); }
+
+/* swipe actions: the icon pops in (and the label firms up) once the swipe passes the point where it will fire */
+.swipe-bg span { font-size: 14px; }
+.swipe-bg span i { font-size: 22px; opacity: .65; transform: scale(.7); transition: transform .2s cubic-bezier(.3, 1.6, .5, 1), opacity .15s ease; }
+.mail-row.armed .swipe-bg span i { opacity: 1; transform: scale(1.2); }
+.mail-row.armed .swipe-bg span { font-weight: 700; }
+@media (prefers-reduced-motion: reduce) { .swipe-bg span i { transition: none; } }
+
+/* search pill: lifts and tints once the list scrolls under it */
+.mailbox-header { z-index: 3; }
+.gm-pill { transition: background-color .2s ease, box-shadow .2s ease; }
+.mailbox-header.scrolled .gm-pill { background: var(--md-surface-container-highest); box-shadow: var(--md-elev-2); }
+@media (prefers-reduced-motion: reduce) { .gm-pill { transition: none; } }
+
+/* a deleted / restored row collapses and fades out before the list refreshes */
+.mail-group > li.mail-row { transition: height .24s ease, margin .24s ease, opacity .2s ease, transform .24s ease; }
+.mail-group > li.mail-row.leaving { height: 0 !important; margin-top: 0 !important; margin-bottom: 0 !important; opacity: 0; transform: translateX(-24px); pointer-events: none; }
+@media (prefers-reduced-motion: reduce) { .mail-group > li.mail-row { transition: none; } }
+
+/* reader header: "to me" with a chevron that opens the full details */
+.rto-toggle { display: inline-flex; align-items: center; gap: 2px; max-width: 100%; min-height: 28px; margin: 0; padding: 0 4px 0 0; background: none; border: 0; border-radius: 8px; color: var(--md-on-surface-variant); font: inherit; font-size: 13px; line-height: 1.3; text-align: left; cursor: pointer; -webkit-tap-highlight-color: transparent; }
+.rto-toggle span { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.rto-toggle i { flex: none; font-size: 18px; transition: transform .2s ease; }
+.rto-toggle[aria-expanded="true"] i { transform: rotate(180deg); }
+.rto-toggle:focus-visible { outline: 2px solid var(--md-primary); outline-offset: 2px; }
+.mail-details { margin: 0 0 12px; padding: 12px 16px; border-radius: 16px; background: var(--md-surface-container); font-size: 13px; line-height: 1.4; }
+.mail-details.d-none { display: none; }
+.mail-details dl { margin: 0; }
+.mail-details dl > div { display: flex; gap: 12px; padding: 4px 0; }
+.mail-details dt { flex: none; width: 40px; font-weight: 400; color: var(--md-outline); }
+.mail-details dd { margin: 0; min-width: 0; overflow-wrap: anywhere; color: var(--md-on-surface); }
+@media (prefers-reduced-motion: reduce) { .rto-toggle i { transition: none; } }
+
+/* =====================================================================
+   Multi-select: touch and hold a row, tap more rows, delete
+   ===================================================================== */
+/* rows never start the browser's text selection / copy-search-AI menu */
+#mailGroup, #mailGroup * { -webkit-user-select: none; user-select: none; -webkit-touch-callout: none; }
+
+/* selected row: tonal fill, avatar turns into a check */
+.mail-group .mail-row .mail-item.selected,
+.mail-group .mail-row .mail-item.selected:hover,
+.mail-group .mail-row .mail-item.selected:active { background-color: var(--md-secondary-container) !important; }
+.mail-avatar span > svg { display: none; }
+.mail-item.selected .mail-avatar { opacity: 1; }
+.mail-item.selected .mail-avatar span { font-size: 0; background-color: var(--md-primary); color: var(--md-on-primary, #00382b); }
+.mail-item.selected .mail-avatar span > svg { display: block; width: 22px; height: 22px; }
+
+/* contextual bar: replaces the search pill while something is selected */
+.sel-bar { display: none; }
+body.selecting .sel-bar {
+  display: flex; align-items: center; gap: 4px; position: absolute; z-index: 6; height: 56px; padding: 0 8px 0 4px;
+  top: calc(10px + env(safe-area-inset-top)); left: calc(12px + env(safe-area-inset-left)); right: calc(12px + env(safe-area-inset-right));
+  border-radius: 28px; background: var(--md-secondary-container); color: var(--md-on-secondary-container); box-shadow: var(--md-elev-2);
+}
+.sel-count { flex: 1; min-width: 0; padding-left: 4px; font-size: 18px; font-weight: 500; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.sel-btn { width: 48px; height: 48px; flex: none; display: inline-flex; align-items: center; justify-content: center; padding: 0; border: 0; border-radius: 50%; background: transparent; color: inherit; cursor: pointer; -webkit-tap-highlight-color: transparent; }
+.sel-btn:hover, .sel-btn:focus-visible { background: rgba(230, 232, 234, .10); }
+.sel-btn:active { background: rgba(230, 232, 234, .16); }
+body.selecting .menu-compose { transform: translateY(24px) scale(.9); opacity: 0; pointer-events: none; }
+
+.sel-btn .m3-icon { width: 24px; height: 24px; display: block; }
+.mail-item.selected .mail-avatar span { display: inline-flex; align-items: center; justify-content: center; }

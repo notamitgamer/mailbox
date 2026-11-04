@@ -3,6 +3,8 @@ const $ = window.jQuery;
 const FIREBASE_VER = '11.10.0';
 
 const state = { folder: 'inbox', mails: [], hasMore: false, loading: false, shown: 30, openId: null, openMail: null, unread: 0, filter: 'all' };
+const sel = new Set(); // ids picked with touch-and-hold (multi-select)
+const lp = { t: 0, firedAt: 0 }; // long-press timer and when it last fired
 let config = { aliases: [], fromName: '' };
 const isNative = () => !!(window.Capacitor && window.Capacitor.isNativePlatform && window.Capacitor.isNativePlatform()); // the Android app
 const hap = (kind) => { try { if (window.MailNative) window.MailNative.haptic(kind); else if (navigator.vibrate) navigator.vibrate(kind === 'tick' ? 8 : 16); } catch (e) { /* optional */ } };
@@ -37,7 +39,24 @@ const parseAddr = (s) => {
   const m = /^\s*"?([^"<]*?)"?\s*<([^>]+)>\s*$/.exec(s || '');
   return m ? { name: m[1].trim(), addr: m[2].trim() } : { name: '', addr: String(s || '').trim() };
 };
-const label = (s) => { const p = parseAddr(s); return p.name || p.addr || 'Unknown'; };
+// Automated senders (no-reply@render.com) have no display name: show the service ("Render") instead of the raw address.
+const PERSONAL_HOST = /^(gmail|googlemail|yahoo|ymail|outlook|hotmail|live|msn|icloud|me|proton|protonmail|pm|aol|zoho|gmx|yandex|rediffmail)\./;
+const AUTO_LOCAL = /^(no-?reply|do-?not-?reply|donotreply|notifications?|notify|support|help|hello|hi|info|team|news|newsletter|mail|mailer|alerts?|updates?|billing|accounts?|admin|events?|contact|service|security|digest|marketing|offers|careers|jobs|receipts?|orders?)([._+-].*)?$/i;
+const BRAND_CASE = { github: 'GitHub', hackerrank: 'HackerRank', linkedin: 'LinkedIn', youtube: 'YouTube', openai: 'OpenAI', paypal: 'PayPal', stackoverflow: 'Stack Overflow', gitlab: 'GitLab', cloudflare: 'Cloudflare', npmjs: 'npm' };
+function serviceOf(addr) { // "render" for anything@mail.render.com; '' for personal mail providers and malformed addresses
+  const at = String(addr || '').lastIndexOf('@'); if (at < 1) return '';
+  const host = addr.slice(at + 1).toLowerCase();
+  if (PERSONAL_HOST.test(host)) return '';
+  const parts = host.split('.'); if (parts.length < 2) return '';
+  const second = parts[parts.length - 2];
+  return parts.length > 2 && second.length <= 3 && parts[parts.length - 1].length === 2 ? parts[parts.length - 3] : second; // render.com, bbc.co.uk
+}
+function brandOf(addr) {
+  const name = AUTO_LOCAL.test(String(addr || '').slice(0, String(addr || '').lastIndexOf('@'))) ? serviceOf(addr) : '';
+  return name ? BRAND_CASE[name] || name.charAt(0).toUpperCase() + name.slice(1) : '';
+}
+const shownName = (p) => p.name || brandOf(p.addr);
+const label = (s) => { const p = parseAddr(s); return shownName(p) || p.addr || 'Unknown'; };
 const fmtSize = (n) => (n >= 1048576 ? (n / 1048576).toFixed(1) + ' MB' : Math.max(1, Math.round(n / 1024)) + ' KB');
 const fullDate = (iso) => new Date(iso).toLocaleString([], { dateStyle: 'medium', timeStyle: 'short' });
 const fmtDate = (iso) => {
@@ -402,12 +421,14 @@ const wantedToken = () => new URLSearchParams(location.search).get('t'); // read
 // ---------- list ----------
 const COLORS = ['green', 'blue', 'indigo', 'red', 'yellow', 'pink', 'purple', 'slate'];
 function colorOf(who) {
+  // One colour per service (every Render mail matches, whatever display name it uses); personal addresses get their own colour.
+  const p = parseAddr(who);
   let h = 0;
-  for (const c of label(who)) h = (h * 31 + c.charCodeAt(0)) >>> 0;
+  for (const c of serviceOf(p.addr) || p.addr.toLowerCase() || label(who)) h = (h * 31 + c.charCodeAt(0)) >>> 0;
   return COLORS[h % COLORS.length];
 }
 function avatar(who) {
-  return `<div class="mail-avatar"><span class="${colorOf(who)}">${esc(label(who).charAt(0).toLowerCase())}</span></div>`;
+  return `<div class="mail-avatar"><span class="${colorOf(who)}">${esc(label(who).charAt(0).toLowerCase())}<svg class="m3-icon" viewBox="0 0 24 24" width="22" height="22" fill="currentColor" aria-hidden="true" focusable="false"><path d="M9 16.17 4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z"/></svg></span></div>`;
 }
 
 function setUnread(n) {
@@ -438,7 +459,7 @@ function renderList() {
       + (state.folder === 'inbox' ? `<span class="swipe-read"><i class="${m.read ? 'ri-mail-unread-line' : 'ri-mail-open-line'}"></i>${m.read ? 'Unread' : 'Read'}</span>`
         : state.folder === 'trash' ? '<span class="swipe-read"><i class="ri-arrow-go-back-line"></i>Restore</span>' : '')
       + '<span class="swipe-del">Delete<i class="ri-delete-bin-line"></i></span></div>'
-      + `<div class="mail-item${m.read ? '' : ' unread'}${m.id === state.openId ? ' active' : ''}" data-id="${esc(m.id)}" role="button" tabindex="0">`
+      + `<div class="mail-item${m.read ? '' : ' unread'}${m.id === state.openId ? ' active' : ''}${sel.has(m.id) ? ' selected' : ''}" data-id="${esc(m.id)}" role="button" tabindex="0">`
       + avatar(sent ? (m.to[0] || 'Draft') : m.from)
       + `<div class="mail-item-body"><div class="d-flex align-items-center"><span class="mail-sender${drafts ? ' mail-draft' : ''}">${m.read ? '' : '<span class="visually-hidden">Unread. </span>'}${esc(who)}</span>`
       + `${(m.attachments || []).length ? '<i class="ri-attachment-2 mail-clip" aria-label="Has attachment"></i>' : ''}<span class="mail-time">${esc(fmtDate(m.date))}</span></div>`
@@ -446,6 +467,11 @@ function renderList() {
       + `<p class="mail-text">${esc(previewOf(m))}</p></div></div></li>`);
   });
   if (state.hasMore && !q) $ul.append('<li class="load-more"><button id="loadMore" class="btn btn-sm btn-outline-primary">Load more</button></li>');
+  if (sel.size) { // rows that vanished (sync, folder change) drop out of the selection
+    const ids = new Set(items.map((x) => x.id));
+    [...sel].forEach((x) => { if (!ids.has(x)) sel.delete(x); });
+    if (sel.size) paintSelection(); else exitSelect();
+  }
   renderStatus();
   ps.update();
 }
@@ -586,6 +612,7 @@ function undoLayer(name) { // put the screen back the way it was without this la
   else if (name === 'filter') setFilter('all');
   else if (name === 'fab') closeFabUi();
   else if (name === 'split') closeSplitUi();
+  else if (name === 'select') clearSelectionUi();
   else if (name === 'search') { $('#search').val('').trigger('input').trigger('blur'); $('.mailbox-header').removeClass('searching'); }
 }
 function pushLayer(name) { layers.push(name); sync(); }
@@ -698,18 +725,37 @@ function fitFrame(frame, keepZoom) {
     applyFrameZoom(frame);
   } catch (e) { /* ignore */ }
 }
+// While the fingers are down the zoom is only a GPU transform on the body (no re-layout of the mail on every touch event, which is what made it
+// stutter). The real zoom + height is applied once, when the fingers lift.
 function enablePinchZoom(frame) {
   const d = frame.contentDocument; if (!d) return;
-  let d0 = 0; let z0 = 1;
+  let d0 = 0; let z0 = 1; let s = 1; let raf = 0;
   const dist = (t) => Math.hypot(t[0].clientX - t[1].clientX, t[0].clientY - t[1].clientY);
-  d.addEventListener('touchstart', (e) => { if (e.touches.length === 2) { d0 = dist(e.touches); z0 = frame._user || 1; } else d0 = 0; }, { passive: true });
+  const bodyEl = () => d.body;
+  const paint = () => { raf = 0; const b = bodyEl(); if (b) b.style.transform = s === 1 ? '' : `scale(${s})`; };
+  const commit = () => {
+    if (raf) { cancelAnimationFrame(raf); raf = 0; }
+    const b = bodyEl();
+    if (b) { b.style.transform = ''; b.style.transformOrigin = ''; b.style.willChange = ''; }
+    if (d0) { frame._user = Math.min(5, Math.max(1, z0 * s)); applyFrameZoom(frame); }
+    d0 = 0; s = 1;
+  };
+  d.addEventListener('touchstart', (e) => {
+    if (e.touches.length === 2) {
+      d0 = dist(e.touches) || 1; z0 = frame._user || 1; s = 1;
+      const b = bodyEl(); if (b) { b.style.transformOrigin = '0 0'; b.style.willChange = 'transform'; }
+    } else if (d0) commit();
+  }, { passive: true });
   d.addEventListener('touchmove', (e) => {
     if (e.touches.length !== 2 || !d0) return;
     e.preventDefault();
-    frame._user = Math.min(5, Math.max(1, z0 * dist(e.touches) / d0));
-    applyFrameZoom(frame);
+    const fit = frame._fit || 1;
+    const lo = 1 / z0; const hi = Math.max(lo, Math.min(5 / z0, 3 / (fit * z0)));
+    s = Math.min(hi, Math.max(lo, dist(e.touches) / d0));
+    if (!raf) raf = requestAnimationFrame(paint);
   }, { passive: false });
-  d.addEventListener('touchend', (e) => { if (e.touches.length < 2) d0 = 0; }, { passive: true });
+  d.addEventListener('touchend', (e) => { if (e.touches.length < 2 && d0) commit(); }, { passive: true });
+  d.addEventListener('touchcancel', () => { if (d0) commit(); }, { passive: true });
   d.addEventListener('dblclick', () => { frame._user = 1; applyFrameZoom(frame); }); // double-tap back to fitted size
 }
 
@@ -896,8 +942,16 @@ function renderReader(m) {
   $('#rSubject').text(m.subject);
   const who = sent ? m.to[0] : m.from;
   $('#rAvatar').attr('class', colorOf(who)).text(label(who).charAt(0).toLowerCase());
-  $('#rFrom').html(sent ? `Me <span>&lt;${esc(m.from)}&gt;</span>` : `${esc(p.name || p.addr)}${p.name ? ` <span>&lt;${esc(p.addr)}&gt;</span>` : ''}`);
-  $('#rTo').text('to: ' + m.to.join(', ') + ((m.cc || []).length ? ' · cc: ' + m.cc.join(', ') : '') + ((m.bcc || []).length ? ' · bcc: ' + m.bcc.join(', ') : ''));
+  const shown = shownName(p);
+  $('#rFrom').html(sent ? `Me <span>&lt;${esc(m.from)}&gt;</span>` : `${esc(shown || p.addr)}${shown ? ` <span>&lt;${esc(p.addr)}&gt;</span>` : ''}`);
+  // Collapsed: "to me" / "to me, Alex +1". The chevron opens the full From / To / Cc / Bcc / Date list.
+  const mine = new Set((config.aliases || []).map((a) => String(a).toLowerCase()));
+  const nameOf = (a) => { const q = parseAddr(a); return mine.has(q.addr.toLowerCase()) ? 'me' : (shownName(q) || q.addr); };
+  const tos = (m.to || []).map(nameOf); const extra = (m.cc || []).length + (m.bcc || []).length;
+  $('#rTo').text('to ' + (tos.length ? tos.slice(0, 2).join(', ') + (tos.length > 2 ? ` +${tos.length - 2}` : '') : 'nobody') + (extra ? ` · ${extra} cc` : ''));
+  const drow = (k, v) => (v ? `<div><dt>${k}</dt><dd>${esc(v)}</dd></div>` : '');
+  $('#rDetails').addClass('d-none').html('<dl>' + drow('From', m.from) + drow('To', (m.to || []).join(', ')) + drow('Cc', (m.cc || []).join(', ')) + drow('Bcc', (m.bcc || []).join(', ')) + drow('Date', fullDate(m.date)) + '</dl>');
+  $('#rToggle').attr({ 'aria-expanded': 'false', title: 'Show details' });
   $('#rTime').text(fullDate(m.date));
   $('#btnReplyTop, #btnReply, #replySplit').toggleClass('d-none', !inbox);
   $('#mnReply, #mnUnread, #btnUnreadTop').toggleClass('d-none', !inbox);
@@ -1276,6 +1330,17 @@ const resendUrl = (m, folder) => {
   return id ? 'https://resend.com/emails/' + encodeURIComponent(id) : null;
 };
 
+// Collapse and fade a list row before the list is re-rendered without it.
+function fadeOutRow(id) {
+  const item = document.querySelector(`#mailGroup .mail-item[data-id="${window.CSS && CSS.escape ? CSS.escape(id) : id}"]`);
+  const row = item && item.closest('.mail-row');
+  if (!row || window.matchMedia('(prefers-reduced-motion: reduce)').matches) return Promise.resolve();
+  row.style.height = row.offsetHeight + 'px';
+  void row.offsetHeight; // commit the explicit height so it can animate to 0
+  row.classList.add('leaving');
+  return new Promise((r) => setTimeout(r, 260));
+}
+
 async function deleteMail(id) { // id: a row swiped in the list; none: the message open in the reader
   const m = id ? { id } : state.openMail; const folder = state.folder;
   if (!m) return;
@@ -1299,6 +1364,7 @@ async function deleteMail(id) { // id: a row swiped in the list; none: the messa
     await saveMeta('app');
   }
   if (!id || state.openId === id) hideReader();
+  await fadeOutRow(m.id);
   await showFolder();
   toast(hard ? 'Deleted' : 'Moved to Bin');
   if (!hard) syncFolder('trash', false).then(renderStatus).catch(() => {});
@@ -1320,6 +1386,7 @@ async function restoreMail(id) {
     if (r.folder === 'inbox' && !r.mail.read) { meta.app.unread += 1; await saveMeta('app'); }
   }
   if (!id || state.openId === id) hideReader();
+  await fadeOutRow(m.id);
   await showFolder();
   toast(r.folder === 'sent' ? 'Restored to Sent' : 'Restored to Inbox');
 }
@@ -1651,14 +1718,85 @@ if ('serviceWorker' in navigator) {
 }
 $('#btnNotify').on('click', (e) => { e.preventDefault(); testPush(); });
 
+// ---------- multi-select: touch and hold a row, tap more rows, then delete ----------
+const LONG_PRESS = 450;
+function paintSelection() {
+  document.body.classList.toggle('selecting', sel.size > 0);
+  $('#mailGroup .mail-item[data-id]').each(function paint() {
+    const on = sel.has(this.dataset.id);
+    this.classList.toggle('selected', on); this.setAttribute('aria-pressed', String(on));
+  });
+  $('#selCount').text(`${sel.size} selected`);
+}
+function clearSelectionUi() { sel.clear(); paintSelection(); }
+function exitSelect() { if (layers.includes('select')) closeLayer('select'); else clearSelectionUi(); }
+function toggleSelect(id) {
+  if (!id) return;
+  if (sel.has(id)) sel.delete(id); else sel.add(id);
+  if (!sel.size) return exitSelect();
+  if (!layers.includes('select')) pushLayer('select');
+  paintSelection();
+}
+function selectAllShown() {
+  $('#mailGroup .mail-item[data-id]').each(function pick() { sel.add(this.dataset.id); });
+  if (sel.size && !layers.includes('select')) pushLayer('select');
+  paintSelection();
+}
+// Delete every selected mail after one confirmation (same server and local steps as deleting a single mail).
+async function deleteMany(ids) {
+  const folder = state.folder; const n = ids.length;
+  if (!n) return;
+  if (!navigator.onLine) return toast('Go online to delete mail.');
+  const hard = folder === 'trash' || folder === 'drafts';
+  const ask = folder === 'drafts' ? { title: `Discard ${n} draft${n > 1 ? 's' : ''}?`, message: 'They are deleted from every device.', ok: 'Discard', danger: true }
+    : hard ? { title: `Delete ${n} message${n > 1 ? 's' : ''} forever?`, message: 'They are removed from every device and cannot be recovered.', ok: 'Delete forever', danger: true }
+      : { title: `Move ${n} message${n > 1 ? 's' : ''} to Bin?`, message: 'You can restore them from the Bin for 30 days.', ok: 'Move to Bin' };
+  if (!(await askConfirm(ask))) return;
+  const done = []; let err = '';
+  for (const id of ids) {
+    try {
+      const row = await store.get(folder, id);
+      await api(`/api/mails/${encodeURIComponent(id)}?folder=${folder}`, { method: 'DELETE' });
+      await store.remove(folder, id);
+      if (hard) fileStore.removeMail(id).catch(() => {});
+      if (meta[folder].total) meta[folder].total -= 1;
+      if (folder === 'inbox') {
+        if (row && !row.read) meta.app.unread = Math.max(0, meta.app.unread - 1);
+        meta.app.pendingRead = meta.app.pendingRead.filter((x) => x !== id);
+      }
+      done.push(id);
+    } catch (e) { err = e.message; break; }
+  }
+  await saveMeta(folder);
+  if (folder === 'inbox') await saveMeta('app');
+  exitSelect();
+  if (state.openId && done.includes(state.openId)) hideReader();
+  await Promise.all(done.map(fadeOutRow));
+  await showFolder();
+  const k = done.length;
+  toast(err ? `${err} (${k} of ${n} done)` : hard ? `${k} deleted` : `${k} moved to Bin`);
+  if (!hard && k) syncFolder('trash', false).then(renderStatus).catch(() => {});
+}
+$('#selClose').on('click', (e) => { e.preventDefault(); exitSelect(); });
+$('#selAll').on('click', (e) => { e.preventDefault(); selectAllShown(); });
+$('#selDelete').on('click', (e) => { e.preventDefault(); deleteMany([...sel]); });
+// The wrapper would otherwise show the browser's copy / search / AI menu on a long press: rows use our own selection instead.
+$('#mailGroup').on('contextmenu', '.mail-item', function noMenu(e) {
+  e.preventDefault();
+  if (Date.now() - lp.firedAt > 1000) toggleSelect(this.dataset.id); // mouse right-click; a touch long press was already handled
+});
+document.addEventListener('keydown', (e) => { if (e.key === 'Escape' && sel.size) exitSelect(); });
+
 // ---------- events ----------
 $('#mailGroup').on('click', '.mail-item', function (e) {
   e.preventDefault();
   if (Date.now() - touch.swipedAt < 400) return; // the finger-lift after a swipe is not a tap
+  if (Date.now() - lp.firedAt < 700) return; // nor is the finger-lift after a long press
+  if (sel.size) return toggleSelect(this.dataset.id);
   openMail(this.dataset.id);
 });
 $('#mailGroup').on('keydown', '.mail-item', function (e) {
-  if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); openMail(this.dataset.id); }
+  if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); if (sel.size) toggleSelect(this.dataset.id); else openMail(this.dataset.id); }
 });
 
 // ---------- touch: swipe a row (right = read/unread, left = delete) and pull the list down to refresh ----------
@@ -1666,6 +1804,13 @@ const touch = { x: 0, y: 0, dx: 0, dy: 0, mode: null, row: null, swipedAt: 0 };
 const SWIPE_AT = 90; const SWIPE_MAX = 130; const PULL_AT = 70;
 const mailGroupEl = document.getElementById('mailGroup');
 const ptrEl = document.getElementById('ptr');
+// search pill: tint + shadow once the list has scrolled under it (class flips only when the state changes)
+const headerEl = document.querySelector('.mailbox-header');
+let pillScrolled = false;
+mailGroupEl.addEventListener('scroll', () => {
+  const s = mailGroupEl.scrollTop > 2;
+  if (s !== pillScrolled) { pillScrolled = s; headerEl.classList.toggle('scrolled', s); }
+}, { passive: true });
 const slide = (el, x, animate) => { el.style.transition = animate ? 'transform .2s ease' : 'none'; el.style.transform = x ? `translateX(${x}px)` : ''; };
 const pullTo = (px, animate) => {
   mailGroupEl.style.transition = animate ? 'transform .2s ease' : 'none';
@@ -1678,7 +1823,11 @@ mailGroupEl.addEventListener('touchstart', (e) => {
   const t = e.touches[0];
   touch.x = t.clientX; touch.y = t.clientY; touch.dx = 0; touch.dy = 0; touch.mode = 'wait';
   const it = e.target.closest('.mail-item');
-  touch.row = it && !it.closest('.skel-row') ? it.closest('.mail-row') : null;
+  touch.row = it && !it.closest('.skel-row') && !sel.size ? it.closest('.mail-row') : null; // no swiping while rows are being selected
+  clearTimeout(lp.t);
+  if (it && !it.closest('.skel-row') && !sel.size) {
+    lp.t = setTimeout(() => { lp.firedAt = Date.now(); touch.mode = null; hap('tick'); toggleSelect(it.dataset.id); }, LONG_PRESS);
+  }
 }, { passive: true });
 mailGroupEl.addEventListener('touchmove', (e) => {
   if (!touch.mode) return;
@@ -1686,6 +1835,7 @@ mailGroupEl.addEventListener('touchmove', (e) => {
   touch.dx = t.clientX - touch.x; touch.dy = t.clientY - touch.y;
   if (touch.mode === 'wait') {
     if (Math.abs(touch.dx) < 8 && Math.abs(touch.dy) < 8) return;
+    clearTimeout(lp.t); // the finger moved: a scroll or swipe, not a long press
     if (Math.abs(touch.dx) > Math.abs(touch.dy) && touch.row) touch.mode = 'swipe';
     else if (touch.dy > 0 && mailGroupEl.scrollTop <= 0) touch.mode = 'pull';
     else { touch.mode = null; return; }
@@ -1705,6 +1855,7 @@ mailGroupEl.addEventListener('touchmove', (e) => {
   }
 }, { passive: false });
 const touchEnd = (e) => {
+  clearTimeout(lp.t);
   const cancelled = e.type === 'touchcancel'; // the system took the touch (gesture, call...): snap back, run nothing
   const mode = touch.mode; touch.mode = null;
   const animate = !window.matchMedia('(prefers-reduced-motion: reduce)').matches;
@@ -1732,6 +1883,12 @@ $('#refresh').on('click', (e) => { e.preventDefault(); syncAll({ reconcile: true
 $('#btnPdf').on('click', (e) => { e.preventDefault(); savePdf(); });
 $('#btnReply, #btnReplyTop').on('click', (e) => { e.preventDefault(); startReply(); });
 $('#mailBack').on('click', (e) => { e.preventDefault(); closeLayer('mail'); });
+$('#rToggle').on('click', function toggleDetails(e) {
+  e.preventDefault();
+  const open = $('#rDetails').hasClass('d-none');
+  $('#rDetails').toggleClass('d-none', !open);
+  $(this).attr({ 'aria-expanded': String(open), title: open ? 'Hide details' : 'Show details' });
+});
 $('#avatar').on('click', async (e) => {
   e.preventDefault();
   if (!navigator.onLine) return toast('Go online to sign out.');
@@ -1740,6 +1897,7 @@ $('#avatar').on('click', async (e) => {
 
 $('#folders').on('click', '.nav-link', function (e) {
   e.preventDefault();
+  if (sel.size) exitSelect();
   $(this).addClass('active').siblings().removeClass('active');
   state.folder = this.dataset.folder;
   if (state.folder === 'inbox') dropLayer('folder'); else if (!layers.includes('folder')) pushLayer('folder');
