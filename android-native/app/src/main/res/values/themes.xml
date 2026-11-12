@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <style name="Theme.Mailbox" parent="android:Theme.Material.Light.NoActionBar">
+        <item name="android:windowBackground">@color/mail_bg</item>
+        <item name="android:statusBarColor">@android:color/transparent</item>
+        <item name="android:navigationBarColor">@android:color/transparent</item>
+    </style>
+    <!-- Material 3 splash: the app icon on the surface colour, handed over to the Compose UI. -->
+    <style name="Theme.Mailbox.Starting" parent="Theme.SplashScreen">
+        <item name="windowSplashScreenBackground">@color/mail_bg</item>
+        <item name="windowSplashScreenAnimatedIcon">@drawable/mail_splash</item>
+        <item name="postSplashScreenTheme">@style/Theme.Mailbox</item>
+    </style>
+</resources>
