@@ -12,6 +12,7 @@ import android.os.Environment
 import android.provider.MediaStore
 import android.provider.OpenableColumns
 import android.webkit.MimeTypeMap
+import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateListOf
@@ -160,6 +161,14 @@ class MailViewModel(application: Application) : AndroidViewModel(application) {
     var query by mutableStateOf("")
     var unreadOnly by mutableStateOf(false)
     var selection by mutableStateOf<Set<String>>(emptySet())
+    var draftCount by mutableIntStateOf(0)
+    var recentSearches by mutableStateOf(prefs.recentSearches)
+
+    /** Held here so the list keeps its scroll position while a message or the composer is open on top of it. */
+    val listState = LazyListState()
+
+    /** On wide screens the message opens beside the list instead of on top of it. */
+    var twoPane by mutableStateOf(false)
 
     // ---- screens on top of the list ----
     val stack = mutableStateListOf<Route>()
@@ -246,6 +255,7 @@ class MailViewModel(application: Application) : AndroidViewModel(application) {
         viewModelScope.launch { ma.registerPush() }
         mails = cache.loadList(folder)
         refresh()
+        refreshCounts()
     }
 
     fun onResume() {
@@ -287,14 +297,40 @@ class MailViewModel(application: Application) : AndroidViewModel(application) {
                 mails = p.mails
                 hasMore = p.hasMore
                 if (f == Folder.INBOX && p.unread != null) unread = p.unread
+                if (f == Folder.DRAFTS) draftCount = p.mails.size
                 cache.saveList(f, p.mails)
                 lastRefresh = System.currentTimeMillis()
+                if (f != Folder.DRAFTS) refreshCounts()
             } catch (e: ApiException) {
                 handleError(e, quiet = e.status == 0 && mails.isNotEmpty())
             } finally {
                 refreshing = false
             }
         }
+    }
+
+    /** Drafts shown as a badge on the folder icon. */
+    fun refreshCounts() {
+        viewModelScope.launch {
+            runCatching { api.list(Folder.DRAFTS, limit = 100) }.onSuccess { draftCount = it.mails.size }
+        }
+    }
+
+    fun commitSearch(q: String) {
+        val t = q.trim()
+        if (t.isEmpty()) return
+        recentSearches = (listOf(t) + recentSearches.filterNot { it.equals(t, ignoreCase = true) }).take(8)
+        prefs.recentSearches = recentSearches
+    }
+
+    fun removeRecent(q: String) {
+        recentSearches = recentSearches - q
+        prefs.recentSearches = recentSearches
+    }
+
+    fun clearRecent() {
+        recentSearches = emptyList()
+        prefs.recentSearches = emptyList()
     }
 
     fun loadMore() {
@@ -352,6 +388,7 @@ class MailViewModel(application: Application) : AndroidViewModel(application) {
     fun openMail(m: Mail) {
         if (folder == Folder.DRAFTS) { editDraft(m); return }
         val f = folder
+        if (twoPane) stack.removeAll { it is Route.Reader }
         stack.add(Route.Reader(m.id, f))
         reader = cache.loadMail(f, m.id) ?: m
         loadReader(m.id, f)
@@ -565,8 +602,10 @@ class MailViewModel(application: Application) : AndroidViewModel(application) {
         if (!c.dirty || c.isEmpty() || c.sending || c.files.any { it.uploading }) return@withLock false
         c.dirty = false
         try {
+            val isNew = c.draftId == null
             c.draftId = api.saveDraft(c.draftJson())
             c.status = "Draft saved"
+            if (isNew) draftCount++
             true
         } catch (e: ApiException) {
             if (e.status == 404) c.draftId = null // discarded or sent elsewhere: the next save starts a new draft
@@ -649,6 +688,7 @@ class MailViewModel(application: Application) : AndroidViewModel(application) {
                     } else if (c.htmlMode) p.put("html", c.body) else p.put("text", c.body)
                     api.send(p)
                     c.dirty = false
+                    if (c.draftId != null) draftCount = maxOf(0, draftCount - 1)
                     if (compose === c) { compose = null; popTo(Route.Compose::class.java) }
                     toast("Sent")
                     if (folder == Folder.SENT || folder == Folder.DRAFTS) refresh()
@@ -667,6 +707,7 @@ class MailViewModel(application: Application) : AndroidViewModel(application) {
         compose = null
         popTo(Route.Compose::class.java)
         if (id != null) viewModelScope.launch {
+            draftCount = maxOf(0, draftCount - 1)
             runCatching { api.delete(id, Folder.DRAFTS) }
             if (folder == Folder.DRAFTS) refresh()
         }

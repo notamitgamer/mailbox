@@ -2,7 +2,6 @@
 
 package dev.amit.mail.ui
 
-import androidx.activity.compose.BackHandler
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.layout.Arrangement
@@ -14,7 +13,9 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.imePadding
+import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.widthIn
@@ -41,6 +42,10 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.InputChip
 import androidx.compose.material3.InputChipDefaults
+import androidx.compose.material3.ListItem
+import androidx.compose.material3.ListItemDefaults
+import androidx.compose.material3.ModalBottomSheet
+import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
@@ -72,7 +77,6 @@ import kotlinx.coroutines.delay
 fun ComposeScreen(vm: MailViewModel) {
     val c = vm.compose ?: return
     val cs = MaterialTheme.colorScheme
-    BackHandler { vm.back() }
     val picker = rememberLauncherForActivityResult(ActivityResultContracts.GetMultipleContents()) { vm.attach(it) }
     var menu by remember { mutableStateOf(false) }
     var templateDialog by remember { mutableStateOf(false) }
@@ -131,17 +135,7 @@ fun ComposeScreen(vm: MailViewModel) {
                     keyboardType = KeyboardType.Email,
                 )
                 if (vm.aliases.size > 1) {
-                    Box {
-                        IconButton(onClick = { fromMenu = true }) { Icon(Icons.Outlined.ArrowDropDown, "Choose address") }
-                        DropdownMenu(expanded = fromMenu, onDismissRequest = { fromMenu = false }) {
-                            vm.aliases.forEachIndexed { i, a ->
-                                DropdownMenuItem(
-                                    text = { Text(if (i == 0) "$a (primary)" else a) },
-                                    onClick = { fromMenu = false; c.from = a; c.markDirty() },
-                                )
-                            }
-                        }
-                    }
+                    IconButton(onClick = { fromMenu = true }) { Icon(Icons.Outlined.ArrowDropDown, "Choose address") }
                 }
             }
             HorizontalDivider(color = cs.outlineVariant)
@@ -195,22 +189,48 @@ fun ComposeScreen(vm: MailViewModel) {
         }
     }
 
+    val clear = ListItemDefaults.colors(containerColor = Color.Transparent)
     if (templateDialog) {
-        AlertDialog(
-            onDismissRequest = { templateDialog = false },
-            title = { Text("Add a template") },
-            text = {
-                Column {
-                    if (vm.templates.isEmpty()) Text("No templates yet. Create them in the web app.", style = MaterialTheme.typography.bodyMedium)
-                    vm.templates.forEach { t ->
-                        TextButton(onClick = { templateDialog = false; vm.chooseTemplate(t) }, Modifier.fillMaxWidth()) {
-                            Text(t.name + if (t.isDefault) " (default)" else "", Modifier.fillMaxWidth())
-                        }
-                    }
+        ModalBottomSheet(onDismissRequest = { templateDialog = false }, sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)) {
+            Column(Modifier.navigationBarsPadding().padding(bottom = 16.dp)) {
+                Text("Add a template", Modifier.padding(horizontal = 24.dp, vertical = 8.dp), style = MaterialTheme.typography.titleLarge)
+                if (vm.templates.isEmpty()) {
+                    Text(
+                        "No templates yet. Create them in the web app.", Modifier.padding(horizontal = 24.dp, vertical = 8.dp),
+                        style = MaterialTheme.typography.bodyMedium, color = cs.onSurfaceVariant,
+                    )
                 }
-            },
-            confirmButton = { TextButton(onClick = { templateDialog = false }) { Text("Close") } },
-        )
+                vm.templates.forEach { t ->
+                    ListItem(
+                        headlineContent = { Text(t.name) },
+                        supportingContent = if (t.isDefault) ({ Text("Default") }) else null,
+                        leadingContent = { Icon(Icons.Outlined.Newspaper, null) },
+                        colors = clear,
+                        modifier = Modifier.clickable { templateDialog = false; vm.chooseTemplate(t) },
+                    )
+                }
+            }
+        }
+    }
+    if (fromMenu) {
+        ModalBottomSheet(onDismissRequest = { fromMenu = false }, sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)) {
+            Column(Modifier.navigationBarsPadding().padding(bottom = 16.dp)) {
+                Text("Send from", Modifier.padding(horizontal = 24.dp, vertical = 8.dp), style = MaterialTheme.typography.titleLarge)
+                vm.aliases.forEachIndexed { i, a ->
+                    ListItem(
+                        headlineContent = { Text(a) },
+                        supportingContent = if (i == 0) ({ Text("Primary") }) else null,
+                        colors = clear,
+                        modifier = Modifier.clickable { fromMenu = false; c.from = a; c.markDirty() },
+                    )
+                }
+                Text(
+                    "Or type any name@${vm.aliases.firstOrNull()?.substringAfter('@', "").orEmpty()} in the From field. It is not saved.",
+                    Modifier.padding(horizontal = 24.dp, vertical = 8.dp),
+                    style = MaterialTheme.typography.bodySmall, color = cs.onSurfaceVariant,
+                )
+            }
+        }
     }
     if (confirmDiscard) {
         AlertDialog(

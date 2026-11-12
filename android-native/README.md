@@ -8,10 +8,13 @@ REST API as the web app (`/api/...`, Firebase ID token as a Bearer token), so th
 
 | Area | Native implementation |
 | --- | --- |
-| Theme | Graphite and teal palette as M3 colour roles, light and dark, optional Material You dynamic colour |
-| Navigation | Modal navigation drawer (Inbox, Sent, Drafts, Bin), pill search bar, extended FAB |
+| Theme | Graphite and teal palette as M3 colour roles, light and dark, optional Material You dynamic colour; Lexend typeface; avatars use the scheme's tonal pairs |
+| Navigation | Modal drawer on phones, navigation rail on medium windows, rail plus list and message side by side on wide ones; badges on Inbox and Drafts |
+| Search | M3 `SearchBar` with a full search view: recent searches and live matches |
+| Motion | Container transform from a list row into the message, predictive back, collapsing large top bar in Settings |
+| Sheets | Bottom sheets for attachment actions, forwarding, templates and the From address |
 | List | Day headers, swipe to delete / mark read, long-press multi-select, pull to refresh, paging |
-| Reader | Header with details, attachment chips (open or save to Downloads), HTML in a script-free WebView |
+| Reader | Header that collapses while you read, attachment chips, HTML in a script-free WebView with a dark view (toggle in the menu) |
 | Compose | Address chips, From alias, Cc/Bcc, attachments (15 MB each), templates, autosaved drafts, reply / reply all / forward |
 | Push | FCM with Mark read / Delete / Reply notification buttons, grouped notifications |
 | Intents | `mailto:` links and "Share" open the composer |

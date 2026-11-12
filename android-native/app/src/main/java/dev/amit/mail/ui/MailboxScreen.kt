@@ -3,6 +3,7 @@
 package dev.amit.mail.ui
 
 import androidx.activity.compose.BackHandler
+import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -12,53 +13,68 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.asPaddingValues
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.statusBarsPadding
+import androidx.compose.foundation.layout.statusBars
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
-import androidx.compose.foundation.lazy.rememberLazyListState
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.foundation.text.BasicTextField
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Edit
+import androidx.compose.material.icons.outlined.ArrowBack
 import androidx.compose.material.icons.outlined.AttachFile
 import androidx.compose.material.icons.outlined.Close
 import androidx.compose.material.icons.outlined.Delete
 import androidx.compose.material.icons.outlined.DeleteSweep
+import androidx.compose.material.icons.outlined.History
 import androidx.compose.material.icons.outlined.MarkEmailRead
 import androidx.compose.material.icons.outlined.MarkEmailUnread
 import androidx.compose.material.icons.outlined.Menu
 import androidx.compose.material.icons.outlined.RestoreFromTrash
+import androidx.compose.material.icons.outlined.Search
 import androidx.compose.material.icons.outlined.SearchOff
 import androidx.compose.material.icons.outlined.SelectAll
 import androidx.compose.material.icons.outlined.Settings
 import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.Badge
+import androidx.compose.material3.BadgedBox
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.DrawerValue
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ExtendedFloatingActionButton
 import androidx.compose.material3.FilterChip
+import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
+import androidx.compose.material3.ListItem
+import androidx.compose.material3.ListItemDefaults
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalDrawerSheet
 import androidx.compose.material3.ModalNavigationDrawer
 import androidx.compose.material3.NavigationDrawerItem
 import androidx.compose.material3.NavigationDrawerItemDefaults
+import androidx.compose.material3.NavigationRail
+import androidx.compose.material3.NavigationRailItem
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.SearchBar
+import androidx.compose.material3.SearchBarDefaults
 import androidx.compose.material3.SwipeToDismissBox
 import androidx.compose.material3.SwipeToDismissBoxValue
-import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
+import androidx.compose.material3.VerticalDivider
 import androidx.compose.material3.pulltorefresh.PullToRefreshBox
 import androidx.compose.material3.rememberDrawerState
 import androidx.compose.material3.rememberSwipeToDismissBoxState
@@ -76,7 +92,6 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.text.font.FontWeight
@@ -90,28 +105,132 @@ import dev.amit.mail.data.label
 import dev.amit.mail.data.previewOf
 import kotlinx.coroutines.launch
 
-@OptIn(ExperimentalMaterial3Api::class, ExperimentalFoundationApi::class)
+private fun matches(m: Mail, q: String) =
+    (m.from + " " + m.to.joinToString(" ") + " " + m.subject + " " + m.snippet).lowercase().contains(q.lowercase())
+
+private fun badgeText(n: Int) = if (n > 99) "99+" else n.toString()
+
+private fun Mail.isOpenIn(vm: MailViewModel) = vm.twoPane && vm.reader?.id == id && vm.stack.any { it is Route.Reader }
+
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun MailboxScreen(vm: MailViewModel) {
+fun MailboxScreen(vm: MailViewModel, size: WindowSize) {
     val drawerState = rememberDrawerState(DrawerValue.Closed)
     val scope = rememberCoroutineScope()
-    val listState = rememberLazyListState()
+    val selecting = vm.selection.isNotEmpty()
+    val idle = vm.stack.isEmpty()
+    var searchExpanded by remember { mutableStateOf(false) }
+
+    // The last handler that is enabled wins, so the most specific one goes last.
+    BackHandler(enabled = idle && vm.folder != Folder.INBOX) { vm.selectFolder(Folder.INBOX) }
+    BackHandler(enabled = idle && vm.query.isNotEmpty()) { vm.query = "" }
+    BackHandler(enabled = idle && selecting) { vm.selection = emptySet() }
+    BackHandler(enabled = searchExpanded) { searchExpanded = false }
+    BackHandler(enabled = drawerState.isOpen) { scope.launch { drawerState.close() } }
+
+    when (size) {
+        WindowSize.Compact -> ModalNavigationDrawer(
+            drawerState = drawerState,
+            gesturesEnabled = !selecting && !searchExpanded,
+            drawerContent = {
+                ModalDrawerSheet {
+                    Text(
+                        "Mailbox", Modifier.padding(start = 28.dp, top = 24.dp, bottom = 12.dp),
+                        style = MaterialTheme.typography.titleLarge, color = MaterialTheme.colorScheme.primary,
+                    )
+                    Folder.entries.forEach { f ->
+                        val count = when (f) { Folder.INBOX -> vm.unread; Folder.DRAFTS -> vm.draftCount; else -> 0 }
+                        NavigationDrawerItem(
+                            label = { Text(f.title) },
+                            icon = { Icon(folderIcon(f), null) },
+                            badge = { if (count > 0) Text(badgeText(count), style = MaterialTheme.typography.labelLarge) },
+                            selected = vm.folder == f,
+                            onClick = { vm.selectFolder(f); scope.launch { drawerState.close() } },
+                            modifier = Modifier.padding(NavigationDrawerItemDefaults.ItemPadding),
+                        )
+                    }
+                    HorizontalDivider(Modifier.padding(horizontal = 28.dp, vertical = 8.dp))
+                    NavigationDrawerItem(
+                        label = { Text("Settings") },
+                        icon = { Icon(Icons.Outlined.Settings, null) },
+                        selected = false,
+                        onClick = { scope.launch { drawerState.close() }; vm.openSettings() },
+                        modifier = Modifier.padding(NavigationDrawerItemDefaults.ItemPadding),
+                    )
+                }
+            },
+        ) {
+            ListPane(vm, size, searchExpanded, { searchExpanded = it }, onMenu = { scope.launch { drawerState.open() } }, Modifier.fillMaxSize())
+        }
+
+        else -> Row(Modifier.fillMaxSize()) {
+            MailRail(vm)
+            val listModifier = if (size == WindowSize.Expanded) Modifier.width(400.dp).fillMaxHeight() else Modifier.weight(1f).fillMaxHeight()
+            ListPane(vm, size, searchExpanded, { searchExpanded = it }, onMenu = null, listModifier)
+            if (size == WindowSize.Expanded) {
+                VerticalDivider()
+                DetailPane(vm, Modifier.weight(1f).fillMaxHeight())
+            }
+        }
+    }
+}
+
+/** Navigation rail for medium and wide windows, with the compose button on top and badges on the folder icons. */
+@Composable
+private fun MailRail(vm: MailViewModel) {
+    NavigationRail(
+        header = {
+            FloatingActionButton(
+                onClick = { vm.openCompose(ComposeArgs()) },
+                containerColor = MaterialTheme.colorScheme.primaryContainer,
+                contentColor = MaterialTheme.colorScheme.onPrimaryContainer,
+            ) { Icon(Icons.Filled.Edit, "Compose") }
+        },
+    ) {
+        Spacer(Modifier.height(4.dp))
+        Folder.entries.forEach { f ->
+            val count = when (f) { Folder.INBOX -> vm.unread; Folder.DRAFTS -> vm.draftCount; else -> 0 }
+            NavigationRailItem(
+                selected = vm.folder == f,
+                onClick = { vm.selectFolder(f) },
+                icon = {
+                    BadgedBox(badge = { if (count > 0) Badge { Text(badgeText(count)) } }) { Icon(folderIcon(f), f.title) }
+                },
+                label = { Text(f.title) },
+            )
+        }
+        Spacer(Modifier.weight(1f))
+        NavigationRailItem(selected = false, onClick = { vm.openSettings() }, icon = { Icon(Icons.Outlined.Settings, "Settings") }, label = { Text("Settings") })
+    }
+}
+
+/** The right-hand side on wide windows: the open message, or a hint. */
+@Composable
+private fun DetailPane(vm: MailViewModel, modifier: Modifier) {
+    val r = vm.stack.lastOrNull { it is Route.Reader } as? Route.Reader
+    Box(modifier.background(MaterialTheme.colorScheme.surface)) {
+        if (r != null) {
+            ReaderScreen(vm, r, embedded = true)
+        } else {
+            EmptyState(folderIcon(Folder.INBOX), "Select a message", "Pick a message from the list to read it here.", Modifier.align(Alignment.Center))
+        }
+    }
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun ListPane(
+    vm: MailViewModel, size: WindowSize, searchExpanded: Boolean, setSearchExpanded: (Boolean) -> Unit,
+    onMenu: (() -> Unit)?, modifier: Modifier,
+) {
+    val listState = vm.listState
     val selecting = vm.selection.isNotEmpty()
     var confirmDelete by remember { mutableStateOf(false) }
     var confirmEmpty by remember { mutableStateOf(false) }
 
-    // The last handler that is enabled wins, so the most specific one goes last.
-    BackHandler(enabled = vm.folder != Folder.INBOX) { vm.selectFolder(Folder.INBOX) }
-    BackHandler(enabled = vm.query.isNotEmpty()) { vm.query = "" }
-    BackHandler(enabled = selecting) { vm.selection = emptySet() }
-    BackHandler(enabled = drawerState.isOpen) { scope.launch { drawerState.close() } }
-
     val visible = remember(vm.mails, vm.query, vm.unreadOnly) {
-        val q = vm.query.trim().lowercase()
-        vm.mails.filter {
-            (!vm.unreadOnly || !it.read) &&
-                (q.isEmpty() || (it.from + " " + it.to.joinToString(" ") + " " + it.subject + " " + it.snippet).lowercase().contains(q))
-        }
+        val q = vm.query.trim()
+        vm.mails.filter { (!vm.unreadOnly || !it.read) && (q.isEmpty() || matches(it, q)) }
     }
     val rows = remember(visible) {
         buildList<Any> {
@@ -130,68 +249,13 @@ fun MailboxScreen(vm: MailViewModel) {
         }
     }
     val fabExpanded by remember { derivedStateOf { listState.firstVisibleItemIndex == 0 } }
+    val barSpace = WindowInsets.statusBars.asPaddingValues().calculateTopPadding() + 72.dp
 
-    ModalNavigationDrawer(
-        drawerState = drawerState,
-        gesturesEnabled = !selecting,
-        drawerContent = {
-            ModalDrawerSheet {
-                Text(
-                    "Mailbox", Modifier.padding(start = 28.dp, top = 24.dp, bottom = 12.dp),
-                    style = MaterialTheme.typography.titleLarge, color = MaterialTheme.colorScheme.primary,
-                )
-                Folder.entries.forEach { f ->
-                    NavigationDrawerItem(
-                        label = { Text(f.title) },
-                        icon = { Icon(folderIcon(f), null) },
-                        badge = { if (f == Folder.INBOX && vm.unread > 0) Text(vm.unread.toString(), style = MaterialTheme.typography.labelLarge) },
-                        selected = vm.folder == f,
-                        onClick = { vm.selectFolder(f); scope.launch { drawerState.close() } },
-                        modifier = Modifier.padding(NavigationDrawerItemDefaults.ItemPadding),
-                    )
-                }
-                HorizontalDivider(Modifier.padding(horizontal = 28.dp, vertical = 8.dp))
-                NavigationDrawerItem(
-                    label = { Text("Settings") },
-                    icon = { Icon(Icons.Outlined.Settings, null) },
-                    selected = false,
-                    onClick = { scope.launch { drawerState.close() }; vm.openSettings() },
-                    modifier = Modifier.padding(NavigationDrawerItemDefaults.ItemPadding),
-                )
-            }
-        },
-    ) {
+    Box(modifier) {
         Scaffold(
             containerColor = MaterialTheme.colorScheme.surface,
-            topBar = {
-                if (selecting) {
-                    val chosen = vm.mails.filter { it.id in vm.selection }
-                    TopAppBar(
-                        title = { Text("${vm.selection.size} selected") },
-                        navigationIcon = { IconButton(onClick = { vm.selection = emptySet() }) { Icon(Icons.Outlined.Close, "Clear selection") } },
-                        actions = {
-                            IconButton(onClick = { vm.selectAll(visible.map { it.id }) }) { Icon(Icons.Outlined.SelectAll, "Select all") }
-                            if (vm.folder == Folder.INBOX) {
-                                val anyUnread = chosen.any { !it.read }
-                                IconButton(onClick = { vm.setRead(vm.selection, anyUnread) }) {
-                                    Icon(if (anyUnread) Icons.Outlined.MarkEmailRead else Icons.Outlined.MarkEmailUnread, if (anyUnread) "Mark read" else "Mark unread")
-                                }
-                            }
-                            if (vm.folder == Folder.TRASH) {
-                                IconButton(onClick = { vm.restoreMails(vm.selection) }) { Icon(Icons.Outlined.RestoreFromTrash, "Restore") }
-                            }
-                            IconButton(onClick = {
-                                if (vm.folder == Folder.INBOX || vm.folder == Folder.SENT) vm.deleteMails(vm.selection) else confirmDelete = true
-                            }) { Icon(Icons.Outlined.Delete, "Delete") }
-                        },
-                        colors = TopAppBarDefaults.topAppBarColors(containerColor = MaterialTheme.colorScheme.surfaceContainerHigh),
-                    )
-                } else {
-                    SearchPill(vm, onMenu = { scope.launch { drawerState.open() } })
-                }
-            },
             floatingActionButton = {
-                if (!selecting) {
+                if (size == WindowSize.Compact && !selecting) {
                     ExtendedFloatingActionButton(
                         onClick = { vm.openCompose(ComposeArgs()) },
                         expanded = fabExpanded,
@@ -201,7 +265,10 @@ fun MailboxScreen(vm: MailViewModel) {
                 }
             },
         ) { inner ->
-            PullToRefreshBox(isRefreshing = vm.refreshing, onRefresh = { vm.refresh() }, modifier = Modifier.padding(inner).fillMaxSize()) {
+            PullToRefreshBox(
+                isRefreshing = vm.refreshing, onRefresh = { vm.refresh() },
+                modifier = Modifier.padding(inner).padding(top = barSpace).fillMaxSize(),
+            ) {
                 LazyColumn(state = listState, modifier = Modifier.fillMaxSize()) {
                     if (vm.folder == Folder.INBOX) {
                         item(key = "filters") {
@@ -258,6 +325,33 @@ fun MailboxScreen(vm: MailViewModel) {
                 }
             }
         }
+
+        if (selecting) {
+            val chosen = vm.mails.filter { it.id in vm.selection }
+            TopAppBar(
+                modifier = Modifier.align(Alignment.TopCenter),
+                title = { Text("${vm.selection.size} selected") },
+                navigationIcon = { IconButton(onClick = { vm.selection = emptySet() }) { Icon(Icons.Outlined.Close, "Clear selection") } },
+                actions = {
+                    IconButton(onClick = { vm.selectAll(visible.map { it.id }) }) { Icon(Icons.Outlined.SelectAll, "Select all") }
+                    if (vm.folder == Folder.INBOX) {
+                        val anyUnread = chosen.any { !it.read }
+                        IconButton(onClick = { vm.setRead(vm.selection, anyUnread) }) {
+                            Icon(if (anyUnread) Icons.Outlined.MarkEmailRead else Icons.Outlined.MarkEmailUnread, if (anyUnread) "Mark read" else "Mark unread")
+                        }
+                    }
+                    if (vm.folder == Folder.TRASH) {
+                        IconButton(onClick = { vm.restoreMails(vm.selection) }) { Icon(Icons.Outlined.RestoreFromTrash, "Restore") }
+                    }
+                    IconButton(onClick = {
+                        if (vm.folder == Folder.INBOX || vm.folder == Folder.SENT) vm.deleteMails(vm.selection) else confirmDelete = true
+                    }) { Icon(Icons.Outlined.Delete, "Delete") }
+                },
+                colors = TopAppBarDefaults.topAppBarColors(containerColor = MaterialTheme.colorScheme.surfaceContainerHigh),
+            )
+        } else {
+            MailSearchBar(vm, searchExpanded, setSearchExpanded, onMenu, Modifier.align(Alignment.TopCenter))
+        }
     }
 
     if (confirmDelete) {
@@ -281,33 +375,88 @@ fun MailboxScreen(vm: MailViewModel) {
     }
 }
 
+/** The Material 3 search bar: collapsed it is a pill; tapped it opens the search view with recent searches and matches. */
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
-private fun SearchPill(vm: MailViewModel, onMenu: () -> Unit) {
+private fun MailSearchBar(
+    vm: MailViewModel, expanded: Boolean, setExpanded: (Boolean) -> Unit, onMenu: (() -> Unit)?, modifier: Modifier,
+) {
     val cs = MaterialTheme.colorScheme
-    Surface(
-        modifier = Modifier.statusBarsPadding().padding(horizontal = 16.dp, vertical = 8.dp).fillMaxWidth().height(56.dp),
-        shape = CircleShape, color = cs.surfaceContainerHigh,
+    val pad by animateDpAsState(if (expanded) 0.dp else 16.dp, label = "searchPad")
+    val transparent = ListItemDefaults.colors(containerColor = Color.Transparent)
+
+    SearchBar(
+        inputField = {
+            SearchBarDefaults.InputField(
+                query = vm.query,
+                onQueryChange = { vm.query = it },
+                onSearch = { vm.commitSearch(it); setExpanded(false) },
+                expanded = expanded,
+                onExpandedChange = setExpanded,
+                placeholder = { Text("Search in ${vm.folder.title.lowercase()}") },
+                leadingIcon = {
+                    when {
+                        expanded -> IconButton(onClick = { setExpanded(false) }) { Icon(Icons.Outlined.ArrowBack, "Close search") }
+                        onMenu != null -> IconButton(onClick = onMenu) { Icon(Icons.Outlined.Menu, "Menu") }
+                        else -> Icon(Icons.Outlined.Search, null)
+                    }
+                },
+                trailingIcon = {
+                    if (vm.query.isNotEmpty()) {
+                        IconButton(onClick = { vm.query = "" }) { Icon(Icons.Outlined.Close, "Clear search") }
+                    } else if (!expanded) {
+                        Box(
+                            Modifier.padding(end = 4.dp).size(32.dp).clip(CircleShape).background(cs.primaryContainer).clickable { vm.openSettings() },
+                            contentAlignment = Alignment.Center,
+                        ) {
+                            Text(vm.email.firstOrNull()?.uppercase() ?: "?", style = MaterialTheme.typography.titleSmall, color = cs.onPrimaryContainer)
+                        }
+                    }
+                },
+            )
+        },
+        expanded = expanded,
+        onExpandedChange = setExpanded,
+        modifier = modifier.fillMaxWidth().padding(horizontal = pad),
     ) {
-        Row(Modifier.fillMaxSize(), verticalAlignment = Alignment.CenterVertically) {
-            IconButton(onClick = onMenu) { Icon(Icons.Outlined.Menu, "Menu") }
-            Box(Modifier.weight(1f)) {
-                if (vm.query.isEmpty()) {
-                    Text("Search in ${vm.folder.title.lowercase()}", style = MaterialTheme.typography.bodyLarge, color = cs.onSurfaceVariant)
+        Column(Modifier.verticalScroll(rememberScrollState())) {
+            val q = vm.query.trim()
+            if (q.isEmpty()) {
+                if (vm.recentSearches.isEmpty()) {
+                    Text(
+                        "Type a name, a subject or a word.", Modifier.padding(16.dp),
+                        style = MaterialTheme.typography.bodyMedium, color = cs.onSurfaceVariant,
+                    )
+                } else {
+                    Row(Modifier.fillMaxWidth().padding(start = 16.dp, end = 8.dp), verticalAlignment = Alignment.CenterVertically) {
+                        Text("Recent", Modifier.weight(1f), style = MaterialTheme.typography.labelLarge, color = cs.primary)
+                        TextButton(onClick = { vm.clearRecent() }) { Text("Clear") }
+                    }
+                    vm.recentSearches.forEach { r ->
+                        ListItem(
+                            headlineContent = { Text(r) },
+                            leadingContent = { Icon(Icons.Outlined.History, null) },
+                            trailingContent = { IconButton(onClick = { vm.removeRecent(r) }) { Icon(Icons.Outlined.Close, "Remove") } },
+                            colors = transparent,
+                            modifier = Modifier.clickable { vm.query = r; vm.commitSearch(r); setExpanded(false) },
+                        )
+                    }
                 }
-                BasicTextField(
-                    value = vm.query, onValueChange = { vm.query = it }, singleLine = true,
-                    textStyle = MaterialTheme.typography.bodyLarge.copy(color = cs.onSurface),
-                    cursorBrush = SolidColor(cs.primary), modifier = Modifier.fillMaxWidth(),
-                )
-            }
-            if (vm.query.isNotEmpty()) {
-                IconButton(onClick = { vm.query = "" }) { Icon(Icons.Outlined.Close, "Clear search") }
             } else {
-                Box(
-                    Modifier.padding(end = 10.dp).size(36.dp).clip(CircleShape).background(cs.primaryContainer).clickable { vm.openSettings() },
-                    contentAlignment = Alignment.Center,
-                ) {
-                    Text(vm.email.firstOrNull()?.uppercase() ?: "?", style = MaterialTheme.typography.titleSmall, color = cs.onPrimaryContainer)
+                ListItem(
+                    headlineContent = { Text("Search for \u201C$q\u201D") },
+                    leadingContent = { Icon(Icons.Outlined.Search, null) },
+                    colors = transparent,
+                    modifier = Modifier.clickable { vm.commitSearch(q); setExpanded(false) },
+                )
+                vm.mails.filter { matches(it, q) }.take(6).forEach { m ->
+                    ListItem(
+                        headlineContent = { Text(label(m.from), maxLines = 1, overflow = TextOverflow.Ellipsis) },
+                        supportingContent = { Text(m.subject, maxLines = 1, overflow = TextOverflow.Ellipsis) },
+                        leadingContent = { Avatar(m.from, false) },
+                        colors = transparent,
+                        modifier = Modifier.clickable { vm.commitSearch(q); setExpanded(false); vm.openMail(m) },
+                    )
                 }
             }
         }
@@ -338,9 +487,10 @@ private fun MailItem(vm: MailViewModel, m: Mail) {
         val outgoing = folder == Folder.SENT || folder == Folder.DRAFTS
         val who = if (outgoing) (m.to.firstOrNull()?.let { "To: " + label(it) } ?: "(no recipient)") else label(m.from)
         val unread = !m.read && folder == Folder.INBOX
+        val highlighted = selected || m.isOpenIn(vm)
         Row(
             Modifier.fillMaxWidth()
-                .background(if (selected) cs.secondaryContainer else cs.surface)
+                .background(if (highlighted) cs.secondaryContainer else cs.surface)
                 .combinedClickable(
                     onClick = { if (selecting) vm.toggleSelect(m.id) else vm.openMail(m) },
                     onLongClick = { haptic.performHapticFeedback(HapticFeedbackType.LongPress); vm.toggleSelect(m.id) },
@@ -379,32 +529,34 @@ private fun MailItem(vm: MailViewModel, m: Mail) {
         }
     }
 
-    if (swipeable) {
-        SwipeToDismissBox(
-            state = state,
-            enableDismissFromStartToEnd = folder == Folder.INBOX,
-            enableDismissFromEndToStart = true,
-            backgroundContent = {
-                val cs = MaterialTheme.colorScheme
-                val dir = state.dismissDirection
-                val bg = when (dir) {
-                    SwipeToDismissBoxValue.StartToEnd -> cs.primaryContainer
-                    SwipeToDismissBoxValue.EndToStart -> cs.errorContainer
-                    else -> Color.Transparent
-                }
-                Box(
-                    Modifier.fillMaxSize().background(bg).padding(horizontal = 24.dp),
-                    contentAlignment = if (dir == SwipeToDismissBoxValue.StartToEnd) Alignment.CenterStart else Alignment.CenterEnd,
-                ) {
-                    when (dir) {
-                        SwipeToDismissBoxValue.StartToEnd -> Icon(if (m.read) Icons.Outlined.MarkEmailUnread else Icons.Outlined.MarkEmailRead, null, tint = cs.onPrimaryContainer)
-                        SwipeToDismissBoxValue.EndToStart -> Icon(Icons.Outlined.Delete, null, tint = cs.onErrorContainer)
-                        else -> {}
+    Box(Modifier.sharedMail(m.id)) {
+        if (swipeable) {
+            SwipeToDismissBox(
+                state = state,
+                enableDismissFromStartToEnd = folder == Folder.INBOX,
+                enableDismissFromEndToStart = true,
+                backgroundContent = {
+                    val cs = MaterialTheme.colorScheme
+                    val dir = state.dismissDirection
+                    val bg = when (dir) {
+                        SwipeToDismissBoxValue.StartToEnd -> cs.primaryContainer
+                        SwipeToDismissBoxValue.EndToStart -> cs.errorContainer
+                        else -> Color.Transparent
                     }
-                }
-            },
-        ) { Content() }
-    } else {
-        Content()
+                    Box(
+                        Modifier.fillMaxSize().background(bg).padding(horizontal = 24.dp),
+                        contentAlignment = if (dir == SwipeToDismissBoxValue.StartToEnd) Alignment.CenterStart else Alignment.CenterEnd,
+                    ) {
+                        when (dir) {
+                            SwipeToDismissBoxValue.StartToEnd -> Icon(if (m.read) Icons.Outlined.MarkEmailUnread else Icons.Outlined.MarkEmailRead, null, tint = cs.onPrimaryContainer)
+                            SwipeToDismissBoxValue.EndToStart -> Icon(Icons.Outlined.Delete, null, tint = cs.onErrorContainer)
+                            else -> {}
+                        }
+                    }
+                },
+            ) { Content() }
+        } else {
+            Content()
+        }
     }
 }

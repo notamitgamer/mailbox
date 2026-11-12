@@ -5,6 +5,7 @@ import android.os.Build
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.material3.ColorScheme
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Typography
 import androidx.compose.material3.darkColorScheme
 import androidx.compose.material3.dynamicDarkColorScheme
 import androidx.compose.material3.dynamicLightColorScheme
@@ -14,7 +15,12 @@ import androidx.compose.runtime.SideEffect
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalView
+import androidx.compose.ui.text.TextStyle
+import androidx.compose.ui.text.font.Font
+import androidx.compose.ui.text.font.FontFamily
+import androidx.compose.ui.text.font.FontWeight
 import androidx.core.view.WindowCompat
+import dev.amit.mail.R
 
 // The graphite and teal palette (#121416, #1b1e21, #4fd1b5, #e6e8ea) expressed as Material 3 colour roles.
 private val DarkColors = darkColorScheme(
@@ -57,6 +63,27 @@ private val LightColors = lightColorScheme(
     surfaceContainer = Color(0xFFE9EFEC), surfaceContainerHigh = Color(0xFFE3EAE6), surfaceContainerHighest = Color(0xFFDEE4E1),
 )
 
+// Lexend, the web app's typeface, on every Material 3 text style.
+private val Lexend = FontFamily(
+    Font(R.font.lexend_regular, FontWeight.Normal),
+    Font(R.font.lexend_medium, FontWeight.Medium),
+    Font(R.font.lexend_bold, FontWeight.Bold),
+)
+
+private fun lexendTypography(): Typography {
+    val d = Typography()
+    fun TextStyle.l() = copy(fontFamily = Lexend)
+    return Typography(
+        displayLarge = d.displayLarge.l(), displayMedium = d.displayMedium.l(), displaySmall = d.displaySmall.l(),
+        headlineLarge = d.headlineLarge.l(), headlineMedium = d.headlineMedium.l(), headlineSmall = d.headlineSmall.l(),
+        titleLarge = d.titleLarge.l(), titleMedium = d.titleMedium.l(), titleSmall = d.titleSmall.l(),
+        bodyLarge = d.bodyLarge.l(), bodyMedium = d.bodyMedium.l(), bodySmall = d.bodySmall.l(),
+        labelLarge = d.labelLarge.l(), labelMedium = d.labelMedium.l(), labelSmall = d.labelSmall.l(),
+    )
+}
+
+private val AppTypography = lexendTypography()
+
 @Composable
 fun isDarkTheme(mode: String): Boolean = when (mode) {
     "light" -> false
@@ -82,5 +109,5 @@ fun MailTheme(mode: String, dynamic: Boolean, content: @Composable () -> Unit) {
             c.isAppearanceLightNavigationBars = !dark
         }
     }
-    MaterialTheme(colorScheme = scheme, content = content)
+    MaterialTheme(colorScheme = scheme, typography = AppTypography, content = content)
 }
