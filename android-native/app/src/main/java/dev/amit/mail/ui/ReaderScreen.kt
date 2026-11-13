@@ -12,6 +12,10 @@ import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.expandVertically
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
+import androidx.compose.material3.OutlinedButton
+import androidx.compose.material3.FilledTonalButton
+import androidx.compose.animation.slideOutVertically
+import androidx.compose.animation.slideInVertically
 import androidx.compose.animation.shrinkVertically
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -104,6 +108,7 @@ fun ReaderScreen(vm: MailViewModel, route: Route.Reader, embedded: Boolean = fal
     var darkView by remember(route.id) { mutableStateOf(true) }
     var headerVisible by remember(route.id) { mutableStateOf(true) }
     var lastToggle by remember { mutableStateOf(0L) }
+    var atEnd by remember(route.id) { mutableStateOf(false) }
     val folder = route.folder
     val ctx = LocalContext.current
 
@@ -133,8 +138,7 @@ fun ReaderScreen(vm: MailViewModel, route: Route.Reader, embedded: Boolean = fal
                             }
                             Folder.DRAFTS -> {}
                         }
-                        IconButton(onClick = { menu = true }) { Icon(Icons.Outlined.MoreVert, "More") }
-                        DropdownMenu(expanded = menu, onDismissRequest = { menu = false }) {
+                        OverflowMenu(menu, { menu = it }) {
                             if (folder == Folder.INBOX) {
                                 DropdownMenuItem(
                                     text = { Text("Reply all") }, leadingIcon = { Icon(Icons.Outlined.ReplyAll, null) },
@@ -167,7 +171,8 @@ fun ReaderScreen(vm: MailViewModel, route: Route.Reader, embedded: Boolean = fal
             )
         },
     ) { inner ->
-        Column(Modifier.padding(inner).fillMaxSize()) {
+        Box(Modifier.padding(inner).fillMaxSize()) {
+        Column(Modifier.fillMaxSize()) {
             if (m == null) {
                 LinearProgressIndicator(Modifier.fillMaxWidth())
                 return@Column
@@ -187,6 +192,7 @@ fun ReaderScreen(vm: MailViewModel, route: Route.Reader, embedded: Boolean = fal
             if (m.hasBody) {
                 MailWebView(
                     m, invert = dark && darkView, modifier = Modifier.weight(1f).fillMaxWidth(),
+                    onAtEnd = { atEnd = it },
                     onScroll = { y, oldY ->
                         val now = System.currentTimeMillis()
                         if (now - lastToggle > 350) {
@@ -208,6 +214,25 @@ fun ReaderScreen(vm: MailViewModel, route: Route.Reader, embedded: Boolean = fal
                     },
                 )
             }
+        }
+        // Reply and Forward sit at the end of the message, like in Gmail: they slide in once you reach the bottom.
+        val canAct = m != null && m.hasBody && (folder == Folder.INBOX || folder == Folder.SENT)
+        AnimatedVisibility(
+            visible = atEnd && canAct,
+            enter = slideInVertically { it } + fadeIn(), exit = slideOutVertically { it } + fadeOut(),
+            modifier = Modifier.align(Alignment.BottomCenter),
+        ) {
+            Row(Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 12.dp), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                if (folder == Folder.INBOX) {
+                    FilledTonalButton(onClick = { vm.replyTo(false) }, Modifier.weight(1f)) {
+                        Icon(Icons.Outlined.Reply, null, Modifier.size(18.dp)); Spacer(Modifier.width(8.dp)); Text("Reply")
+                    }
+                }
+                OutlinedButton(onClick = { forward = true }, Modifier.weight(1f)) {
+                    Icon(Icons.Outlined.Forward, null, Modifier.size(18.dp)); Spacer(Modifier.width(8.dp)); Text("Forward")
+                }
+            }
+        }
         }
     }
 
@@ -349,11 +374,12 @@ private fun ForwardSheet(onDismiss: () -> Unit, onSend: (List<String>) -> Unit, 
 /** The message body in a locked-down WebView: no scripting, links leave the app. */
 @SuppressLint("SetJavaScriptEnabled")
 @Composable
-private fun MailWebView(m: Mail, invert: Boolean, modifier: Modifier, onScroll: (Int, Int) -> Unit, onLink: (Uri) -> Unit) {
+private fun MailWebView(m: Mail, invert: Boolean, modifier: Modifier, onAtEnd: (Boolean) -> Unit, onScroll: (Int, Int) -> Unit, onLink: (Uri) -> Unit) {
     val cs = MaterialTheme.colorScheme
     val bg = cs.surface.toArgb()
     val onLinkNow by rememberUpdatedState(onLink)
     val onScrollNow by rememberUpdatedState(onScroll)
+    val onAtEndNow by rememberUpdatedState(onAtEnd)
     val page = remember(m.id, m.html, m.text, invert, bg) { buildPage(m, invert, bg, cs.onSurface.toArgb(), cs.primary.toArgb()) }
     AndroidView(
         modifier = modifier,
@@ -367,8 +393,11 @@ private fun MailWebView(m: Mail, invert: Boolean, modifier: Modifier, onScroll: 
                 settings.displayZoomControls = false
                 settings.useWideViewPort = true
                 settings.loadWithOverviewMode = true
-                setOnScrollChangeListener { _, _, y, _, oldY -> onScrollNow(y, oldY) }
+                setOnScrollChangeListener { v, _, y, _, oldY -> onScrollNow(y, oldY); onAtEndNow(!v.canScrollVertically(1)) }
                 webViewClient = object : WebViewClient() {
+                    override fun onPageFinished(view: WebView, url: String?) {
+                        view.postDelayed({ onAtEndNow(!view.canScrollVertically(1)) }, 200)
+                    }
                     override fun shouldOverrideUrlLoading(view: WebView, request: WebResourceRequest): Boolean {
                         onLinkNow(request.url)
                         return true
@@ -405,10 +434,10 @@ private fun buildPage(m: Mail, invert: Boolean, surface: Int, text: Int, link: I
             "<style>html{background:${hex(src)};filter:invert(1) hue-rotate(180deg)}" +
                 "img,video,picture,svg,canvas,iframe,[style*=\"background-image\"]{filter:invert(1) hue-rotate(180deg)}</style>"
         } else ""
-        return "<!doctype html><html><head><meta charset=\"utf-8\">$head$dark</head><body>$html</body></html>"
+        return "<!doctype html><html><head><meta charset=\"utf-8\">$head$dark</head><body>$html<div style=\"height:88px\"></div></body></html>"
     }
     return "<!doctype html><html><head><meta charset=\"utf-8\">$head<style>" +
         "body{margin:16px;font:16px/1.5 sans-serif;color:${hex(text)};background:transparent}a{color:${hex(link)}}" +
         "pre{white-space:pre-wrap;word-wrap:break-word;font:inherit;margin:0}</style></head>" +
-        "<body><pre>${escHtml(m.text.orEmpty())}</pre></body></html>"
+        "<body><pre>${escHtml(m.text.orEmpty())}</pre><div style=\"height:88px\"></div></body></html>"
 }

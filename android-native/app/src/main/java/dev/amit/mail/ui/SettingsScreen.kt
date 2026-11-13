@@ -8,6 +8,14 @@ import android.os.Build
 import android.provider.Settings
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Column
+import dev.amit.mail.data.fmtSize
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.material3.LinearProgressIndicator
+import androidx.compose.material.icons.outlined.Storage
+import androidx.compose.material.icons.outlined.DeleteOutline
+import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
@@ -52,6 +60,8 @@ fun SettingsScreen(vm: MailViewModel) {
     val cs = MaterialTheme.colorScheme
     val ctx = LocalContext.current
     var confirmSignOut by remember { mutableStateOf(false) }
+    var confirmClear by remember { mutableStateOf(false) }
+    LaunchedEffect(Unit) { vm.refreshStorage() }
     val transparent = ListItemDefaults.colors(containerColor = cs.surface)
     // A large top bar that collapses into a small one as the settings scroll.
     val scrollBehavior = TopAppBarDefaults.exitUntilCollapsedScrollBehavior()
@@ -124,6 +134,32 @@ fun SettingsScreen(vm: MailViewModel) {
             )
             HorizontalDivider(Modifier.padding(vertical = 16.dp))
 
+            Section("Storage")
+            ListItem(
+                headlineContent = { Text("Downloaded files") },
+                supportingContent = {
+                    Text(if (vm.fileCount > 0) "${vm.fileCount} file${if (vm.fileCount == 1) "" else "s"} \u00B7 ${fmtSize(vm.fileBytes)}" else "None saved")
+                },
+                leadingContent = { Icon(Icons.Outlined.Storage, null) },
+                colors = transparent,
+            )
+            LinearProgressIndicator(
+                progress = { (vm.fileBytes.toFloat() / vm.fileCap).coerceIn(0f, 1f).let { if (vm.fileBytes > 0 && it < 0.02f) 0.02f else it } },
+                modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp),
+                color = if (vm.fileBytes >= vm.fileCap * 85 / 100) cs.error else cs.primary,
+            )
+            Text(
+                "Up to ${fmtSize(vm.fileCap)} on this phone. Older files go first when it is full.",
+                Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
+                style = MaterialTheme.typography.bodySmall, color = cs.onSurfaceVariant,
+            )
+            OutlinedButton(onClick = { confirmClear = true }, enabled = vm.fileCount > 0, modifier = Modifier.padding(horizontal = 16.dp)) {
+                Icon(Icons.Outlined.DeleteOutline, null, Modifier.size(18.dp))
+                Spacer(Modifier.width(8.dp))
+                Text("Clear downloaded files")
+            }
+            HorizontalDivider(Modifier.padding(vertical = 16.dp))
+
             Section("About")
             ListItem(
                 headlineContent = { Text("Mailbox ${BuildConfig.VERSION_NAME}") },
@@ -134,6 +170,15 @@ fun SettingsScreen(vm: MailViewModel) {
         }
     }
 
+    if (confirmClear) {
+        AlertDialog(
+            onDismissRequest = { confirmClear = false },
+            title = { Text("Clear downloaded files?") },
+            text = { Text("${vm.fileCount} file${if (vm.fileCount == 1) "" else "s"} (${fmtSize(vm.fileBytes)}) will be removed from this phone. Your mail stays, and a file downloads again when you open it.") },
+            confirmButton = { TextButton(onClick = { confirmClear = false; vm.clearFiles() }) { Text("Clear files") } },
+            dismissButton = { TextButton(onClick = { confirmClear = false }) { Text("Cancel") } },
+        )
+    }
     if (confirmSignOut) {
         AlertDialog(
             onDismissRequest = { confirmSignOut = false },

@@ -9,18 +9,22 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.outlined.DeleteOutline
 import androidx.compose.material.icons.outlined.Drafts
 import androidx.compose.material.icons.outlined.Inbox
+import androidx.compose.material.icons.outlined.MoreVert
 import androidx.compose.material.icons.outlined.Send
 import androidx.compose.material3.ColorScheme
+import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -110,6 +114,19 @@ fun EmptyState(icon: ImageVector, title: String, hint: String, modifier: Modifie
         Icon(icon, null, Modifier.size(56.dp), tint = MaterialTheme.colorScheme.primary)
         Text(title, Modifier.padding(top = 16.dp), style = MaterialTheme.typography.titleLarge)
         Text(hint, Modifier.padding(top = 4.dp), style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant, textAlign = TextAlign.Center)
+    }
+}
+
+/** The three-dot button and its Material 3 menu (rounded, tonal surface), anchored to the button itself. */
+@Composable
+fun OverflowMenu(expanded: Boolean, onExpandedChange: (Boolean) -> Unit, content: @Composable ColumnScope.() -> Unit) {
+    Box {
+        IconButton(onClick = { onExpandedChange(true) }) { Icon(Icons.Outlined.MoreVert, contentDescription = "More options") }
+        DropdownMenu(
+            expanded = expanded, onDismissRequest = { onExpandedChange(false) },
+            shape = RoundedCornerShape(16.dp), containerColor = MaterialTheme.colorScheme.surfaceContainer,
+            tonalElevation = 0.dp, shadowElevation = 6.dp, content = content,
+        )
     }
 }
 

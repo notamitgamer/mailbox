@@ -24,9 +24,10 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBars
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Edit
@@ -249,7 +250,7 @@ private fun ListPane(
         }
     }
     val fabExpanded by remember { derivedStateOf { listState.firstVisibleItemIndex == 0 } }
-    val barSpace = WindowInsets.statusBars.asPaddingValues().calculateTopPadding() + 72.dp
+    val barSpace = 72.dp // the Scaffold already pads for the status bar; this is just the search bar (56dp) plus its margins
 
     Box(modifier) {
         Scaffold(
@@ -306,9 +307,9 @@ private fun ListPane(
                             }
                         }
                     }
-                    items(rows, key = { if (it is Mail) it.id else "h_$it" }, contentType = { if (it is Mail) 0 else 1 }) { row ->
+                    itemsIndexed(rows, key = { _, it -> if (it is Mail) it.id else "h_$it" }, contentType = { _, it -> if (it is Mail) 0 else 1 }) { i, row ->
                         if (row is Mail) {
-                            MailItem(vm, row)
+                            MailItem(vm, row, first = i == 0 || rows[i - 1] !is Mail, last = i == rows.lastIndex || rows[i + 1] !is Mail)
                         } else {
                             Text(
                                 row as String, Modifier.padding(start = 16.dp, top = 12.dp, bottom = 4.dp),
@@ -465,7 +466,7 @@ private fun MailSearchBar(
 
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalFoundationApi::class)
 @Composable
-private fun MailItem(vm: MailViewModel, m: Mail) {
+private fun MailItem(vm: MailViewModel, m: Mail, first: Boolean, last: Boolean) {
     val haptic = LocalHapticFeedback.current
     val folder = vm.folder
     val selected = m.id in vm.selection
@@ -490,7 +491,7 @@ private fun MailItem(vm: MailViewModel, m: Mail) {
         val highlighted = selected || m.isOpenIn(vm)
         Row(
             Modifier.fillMaxWidth()
-                .background(if (highlighted) cs.secondaryContainer else cs.surface)
+                .background(if (highlighted) cs.secondaryContainer else if (m.read && folder == Folder.INBOX) cs.surfaceContainerLow else cs.surfaceContainer)
                 .combinedClickable(
                     onClick = { if (selecting) vm.toggleSelect(m.id) else vm.openMail(m) },
                     onLongClick = { haptic.performHapticFeedback(HapticFeedbackType.LongPress); vm.toggleSelect(m.id) },
@@ -529,7 +530,10 @@ private fun MailItem(vm: MailViewModel, m: Mail) {
         }
     }
 
-    Box(Modifier.sharedMail(m.id)) {
+    // Gmail-style groups: each day is one card stack, rounded at its top and bottom, flat and thinly separated in between.
+    val edge = 24.dp
+    val shape = RoundedCornerShape(topStart = if (first) edge else 0.dp, topEnd = if (first) edge else 0.dp, bottomStart = if (last) edge else 0.dp, bottomEnd = if (last) edge else 0.dp)
+    Box(Modifier.sharedMail(m.id).padding(horizontal = 12.dp).padding(bottom = 2.dp).clip(shape)) {
         if (swipeable) {
             SwipeToDismissBox(
                 state = state,

@@ -104,8 +104,7 @@ fun ComposeScreen(vm: MailViewModel) {
                         if (c.sending) CircularProgressIndicator(Modifier.size(20.dp), strokeWidth = 2.dp)
                         else Icon(Icons.AutoMirrored.Filled.Send, "Send", tint = cs.primary)
                     }
-                    IconButton(onClick = { menu = true }) { Icon(Icons.Outlined.MoreVert, "More") }
-                    DropdownMenu(expanded = menu, onDismissRequest = { menu = false }) {
+                    OverflowMenu(menu, { menu = it }) {
                         DropdownMenuItem(
                             text = { Text(if (c.htmlMode) "Switch to plain text" else "Write as HTML") },
                             leadingIcon = { Icon(Icons.Outlined.Code, null) },
@@ -154,13 +153,6 @@ fun ComposeScreen(vm: MailViewModel) {
                 modifier = Modifier.fillMaxWidth().padding(horizontal = 4.dp),
             )
             HorizontalDivider(color = cs.outlineVariant)
-            TextField(
-                value = c.bodyField, onValueChange = { c.bodyField = it; c.markDirty() },
-                placeholder = { Text(if (c.htmlMode) "HTML" else "Write your message") },
-                minLines = 10, modifier = Modifier.fillMaxWidth(),
-                textStyle = MaterialTheme.typography.bodyLarge.let { if (c.htmlMode) it.copy(fontFamily = FontFamily.Monospace) else it },
-                colors = transparentFieldColors(),
-            )
             if (c.templateHtml.isNotEmpty() || c.files.isNotEmpty()) {
                 FlowRow(Modifier.padding(horizontal = 16.dp, vertical = 8.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                     if (c.templateHtml.isNotEmpty()) {
@@ -183,6 +175,13 @@ fun ComposeScreen(vm: MailViewModel) {
                     }
                 }
             }
+            TextField(
+                value = c.bodyField, onValueChange = { c.bodyField = it; c.markDirty() },
+                placeholder = { Text(if (c.htmlMode) "HTML" else "Write your message") },
+                minLines = 10, modifier = Modifier.fillMaxWidth(),
+                textStyle = MaterialTheme.typography.bodyLarge.let { if (c.htmlMode) it.copy(fontFamily = FontFamily.Monospace) else it },
+                colors = transparentFieldColors(),
+            )
             if (c.status.isNotEmpty()) {
                 Text(c.status, Modifier.padding(horizontal = 16.dp, vertical = 8.dp), style = MaterialTheme.typography.labelMedium, color = cs.onSurfaceVariant)
             }
