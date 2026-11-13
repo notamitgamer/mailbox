@@ -758,6 +758,8 @@ class MailViewModel(application: Application) : AndroidViewModel(application) {
                 if (!dest.exists() || dest.length() == 0L) {
                     toast("Downloading ${a.filename}…")
                     api.download(m.id, n, f, dest)
+                    withContext(Dispatchers.IO) { trimFiles() }
+                    refreshStorage()
                 }
                 val mime = a.contentType ?: MimeTypeMap.getSingleton().getMimeTypeFromExtension(dest.extension) ?: "application/octet-stream"
                 if (save && saveToDownloads(dest, a.filename, mime)) toast("Saved to Downloads") else viewFile(dest, mime)
@@ -766,6 +768,42 @@ class MailViewModel(application: Application) : AndroidViewModel(application) {
             } catch (e: Exception) {
                 toast("Couldn't open ${a.filename}")
             }
+        }
+    }
+
+    // ---- storage used by downloaded files (same idea as the web app's Storage panel) ----
+
+    var fileCount by mutableStateOf(0)
+    var fileBytes by mutableStateOf(0L)
+    val fileCap = 250L * 1024 * 1024 // past this the oldest downloaded files go first; they download again when opened
+
+    private fun attachmentFiles(): List<File> =
+        File(getApplication<Application>().cacheDir, "attachments").listFiles()?.filter { it.isFile }.orEmpty()
+
+    fun refreshStorage() {
+        viewModelScope.launch(Dispatchers.IO) {
+            val fs = attachmentFiles()
+            fileCount = fs.size
+            fileBytes = fs.sumOf { it.length() }
+        }
+    }
+
+    private fun trimFiles() {
+        val fs = attachmentFiles().sortedBy { it.lastModified() }
+        var total = fs.sumOf { it.length() }
+        if (total <= fileCap) return
+        for (f in fs) {
+            if (total <= fileCap * 9 / 10) break
+            total -= f.length()
+            f.delete()
+        }
+    }
+
+    fun clearFiles() {
+        viewModelScope.launch {
+            withContext(Dispatchers.IO) { attachmentFiles().forEach { it.delete() } }
+            refreshStorage()
+            toast("Downloaded files cleared")
         }
     }
 

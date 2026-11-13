@@ -24,9 +24,10 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBars
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Edit
@@ -249,7 +250,7 @@ private fun ListPane(
         }
     }
     val fabExpanded by remember { derivedStateOf { listState.firstVisibleItemIndex == 0 } }
-    val barSpace = WindowInsets.statusBars.asPaddingValues().calculateTopPadding() + 72.dp
+    val barSpace = 72.dp // the Scaffold already pads for the status bar; this is just the search bar (56dp) plus its margins
 
     Box(modifier) {
         Scaffold(
@@ -306,9 +307,9 @@ private fun ListPane(
                             }
                         }
                     }
-                    items(rows, key = { if (it is Mail) it.id else "h_$it" }, contentType = { if (it is Mail) 0 else 1 }) { row ->
+                    itemsIndexed(rows, key = { _, it -> if (it is Mail) it.id else "h_$it" }, contentType = { _, it -> if (it is Mail) 0 else 1 }) { i, row ->
                         if (row is Mail) {
-                            MailItem(vm, row)
+                            MailItem(vm, row, first = i == 0 || rows[i - 1] !is Mail, last = i == rows.lastIndex || rows[i + 1] !is Mail)
                         } else {
                             Text(
                                 row as String, Modifier.padding(start = 16.dp, top = 12.dp, bottom = 4.dp),
@@ -405,12 +406,7 @@ private fun MailSearchBar(
                     if (vm.query.isNotEmpty()) {
                         IconButton(onClick = { vm.query = "" }) { Icon(Icons.Outlined.Close, "Clear search") }
                     } else if (!expanded) {
-                        Box(
-                            Modifier.padding(end = 4.dp).size(32.dp).clip(CircleShape).background(cs.primaryContainer).clickable { vm.openSettings() },
-                            contentAlignment = Alignment.Center,
-                        ) {
-                            Text(vm.email.firstOrNull()?.uppercase() ?: "?", style = MaterialTheme.typography.titleSmall, color = cs.onPrimaryContainer)
-                        }
+                        IconButton(onClick = { vm.openSettings() }) { Avatar(vm.email, false, 32.dp) }
                     }
                 },
             )
@@ -465,7 +461,7 @@ private fun MailSearchBar(
 
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalFoundationApi::class)
 @Composable
-private fun MailItem(vm: MailViewModel, m: Mail) {
+private fun MailItem(vm: MailViewModel, m: Mail, first: Boolean, last: Boolean) {
     val haptic = LocalHapticFeedback.current
     val folder = vm.folder
     val selected = m.id in vm.selection
@@ -488,48 +484,48 @@ private fun MailItem(vm: MailViewModel, m: Mail) {
         val who = if (outgoing) (m.to.firstOrNull()?.let { "To: " + label(it) } ?: "(no recipient)") else label(m.from)
         val unread = !m.read && folder == Folder.INBOX
         val highlighted = selected || m.isOpenIn(vm)
-        Row(
-            Modifier.fillMaxWidth()
-                .background(if (highlighted) cs.secondaryContainer else cs.surface)
-                .combinedClickable(
-                    onClick = { if (selecting) vm.toggleSelect(m.id) else vm.openMail(m) },
-                    onLongClick = { haptic.performHapticFeedback(HapticFeedbackType.LongPress); vm.toggleSelect(m.id) },
+        val container = when {
+            highlighted -> cs.secondaryContainer
+            m.read && folder == Folder.INBOX -> cs.surfaceContainerLow
+            else -> cs.surfaceContainer
+        }
+        // A stock Material 3 three-line list item: sender above, subject, then the preview.
+        ListItem(
+            modifier = Modifier.fillMaxWidth().combinedClickable(
+                onClick = { if (selecting) vm.toggleSelect(m.id) else vm.openMail(m) },
+                onLongClick = { haptic.performHapticFeedback(HapticFeedbackType.LongPress); vm.toggleSelect(m.id) },
+            ),
+            colors = ListItemDefaults.colors(containerColor = container),
+            leadingContent = { Avatar(if (outgoing) m.to.firstOrNull() else m.from, selected, modifier = Modifier.clickable { vm.toggleSelect(m.id) }) },
+            overlineContent = {
+                Text(
+                    who, maxLines = 1, overflow = TextOverflow.Ellipsis, color = cs.onSurface,
+                    style = MaterialTheme.typography.titleSmall, fontWeight = if (unread) FontWeight.Bold else FontWeight.Normal,
                 )
-                .padding(horizontal = 16.dp, vertical = 12.dp),
-            verticalAlignment = Alignment.Top,
-        ) {
-            Avatar(if (outgoing) m.to.firstOrNull() else m.from, selected, modifier = Modifier.clickable { vm.toggleSelect(m.id) })
-            Spacer(Modifier.width(16.dp))
-            Column(Modifier.weight(1f)) {
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    Text(
-                        who, Modifier.weight(1f), maxLines = 1, overflow = TextOverflow.Ellipsis,
-                        style = MaterialTheme.typography.titleMedium, fontWeight = if (unread) FontWeight.Bold else FontWeight.Normal,
-                        color = cs.onSurface,
-                    )
-                    Spacer(Modifier.width(8.dp))
+            },
+            headlineContent = {
+                Text(m.subject, maxLines = 1, overflow = TextOverflow.Ellipsis, fontWeight = if (unread) FontWeight.Bold else FontWeight.Normal)
+            },
+            supportingContent = { Text(previewOf(m), maxLines = 1, overflow = TextOverflow.Ellipsis) },
+            trailingContent = {
+                Column(horizontalAlignment = Alignment.End, verticalArrangement = Arrangement.spacedBy(6.dp)) {
                     Text(
                         fmtDate(m.date), style = MaterialTheme.typography.labelMedium,
                         color = if (unread) cs.primary else cs.onSurfaceVariant, fontWeight = if (unread) FontWeight.Bold else FontWeight.Normal,
                     )
+                    Row(horizontalArrangement = Arrangement.spacedBy(6.dp), verticalAlignment = Alignment.CenterVertically) {
+                        if (m.attachmentCount > 0) Icon(Icons.Outlined.AttachFile, "Has attachments", Modifier.size(16.dp), tint = cs.onSurfaceVariant)
+                        if (unread) Badge()
+                    }
                 }
-                Text(
-                    m.subject, maxLines = 1, overflow = TextOverflow.Ellipsis, style = MaterialTheme.typography.bodyMedium,
-                    fontWeight = if (unread) FontWeight.Bold else FontWeight.Normal, color = cs.onSurface,
-                )
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    Text(
-                        previewOf(m), Modifier.weight(1f), maxLines = 1, overflow = TextOverflow.Ellipsis,
-                        style = MaterialTheme.typography.bodyMedium, color = cs.onSurfaceVariant,
-                    )
-                    if (m.attachmentCount > 0) Icon(Icons.Outlined.AttachFile, "Has attachments", Modifier.padding(start = 8.dp).size(16.dp), tint = cs.onSurfaceVariant)
-                    if (unread) Box(Modifier.padding(start = 8.dp).size(8.dp).clip(CircleShape).background(cs.primary))
-                }
-            }
-        }
+            },
+        )
     }
 
-    Box(Modifier.sharedMail(m.id)) {
+    // Gmail-style groups: each day is one card stack, rounded at its top and bottom, flat and thinly separated in between.
+    val edge = 24.dp
+    val shape = RoundedCornerShape(topStart = if (first) edge else 0.dp, topEnd = if (first) edge else 0.dp, bottomStart = if (last) edge else 0.dp, bottomEnd = if (last) edge else 0.dp)
+    Box(Modifier.sharedMail(m.id).padding(horizontal = 12.dp).padding(bottom = 2.dp).clip(shape)) {
         if (swipeable) {
             SwipeToDismissBox(
                 state = state,

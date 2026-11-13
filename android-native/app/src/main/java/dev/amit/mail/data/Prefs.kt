@@ -10,9 +10,9 @@ class Prefs(ctx: Context) {
         get() = sp.getString("theme", "system") ?: "system"
         set(v) = sp.edit().putString("theme", v).apply()
 
-    /** Material You colours from the wallpaper (Android 12+). Off by default: the graphite and teal palette. */
+    /** Material You colours from the wallpaper (Android 12+). On by default; older phones and "off" use the graphite and teal scheme. */
     var dynamicColor: Boolean
-        get() = sp.getBoolean("dynamic", false)
+        get() = sp.getBoolean("dynamic", true)
         set(v) = sp.edit().putBoolean("dynamic", v).apply()
 
     var aliases: List<String>
