@@ -264,7 +264,7 @@ class MailViewModel(application: Application) : AndroidViewModel(application) {
         if (prefs.pendingFcm != null) viewModelScope.launch { ma.registerPush() }
     }
 
-    fun setTheme(v: String) { theme = v; prefs.theme = v }
+    fun updateTheme(v: String) { theme = v; prefs.theme = v }
     fun setDynamic(v: Boolean) { dynamicColor = v; prefs.dynamicColor = v }
 
     fun testPush() {

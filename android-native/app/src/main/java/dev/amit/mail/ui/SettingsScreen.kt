@@ -89,7 +89,7 @@ fun SettingsScreen(vm: MailViewModel) {
             SingleChoiceSegmentedButtonRow(Modifier.fillMaxWidth().padding(horizontal = 16.dp)) {
                 options.forEachIndexed { i, (key, name) ->
                     SegmentedButton(
-                        selected = vm.theme == key, onClick = { vm.setTheme(key) },
+                        selected = vm.theme == key, onClick = { vm.updateTheme(key) },
                         shape = SegmentedButtonDefaults.itemShape(i, options.size),
                     ) { Text(name) }
                 }
