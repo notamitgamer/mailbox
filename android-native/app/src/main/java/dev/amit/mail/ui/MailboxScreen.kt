@@ -406,12 +406,7 @@ private fun MailSearchBar(
                     if (vm.query.isNotEmpty()) {
                         IconButton(onClick = { vm.query = "" }) { Icon(Icons.Outlined.Close, "Clear search") }
                     } else if (!expanded) {
-                        Box(
-                            Modifier.padding(end = 4.dp).size(32.dp).clip(CircleShape).background(cs.primaryContainer).clickable { vm.openSettings() },
-                            contentAlignment = Alignment.Center,
-                        ) {
-                            Text(vm.email.firstOrNull()?.uppercase() ?: "?", style = MaterialTheme.typography.titleSmall, color = cs.onPrimaryContainer)
-                        }
+                        IconButton(onClick = { vm.openSettings() }) { Avatar(vm.email, false, 32.dp) }
                     }
                 },
             )
@@ -489,45 +484,42 @@ private fun MailItem(vm: MailViewModel, m: Mail, first: Boolean, last: Boolean) 
         val who = if (outgoing) (m.to.firstOrNull()?.let { "To: " + label(it) } ?: "(no recipient)") else label(m.from)
         val unread = !m.read && folder == Folder.INBOX
         val highlighted = selected || m.isOpenIn(vm)
-        Row(
-            Modifier.fillMaxWidth()
-                .background(if (highlighted) cs.secondaryContainer else if (m.read && folder == Folder.INBOX) cs.surfaceContainerLow else cs.surfaceContainer)
-                .combinedClickable(
-                    onClick = { if (selecting) vm.toggleSelect(m.id) else vm.openMail(m) },
-                    onLongClick = { haptic.performHapticFeedback(HapticFeedbackType.LongPress); vm.toggleSelect(m.id) },
+        val container = when {
+            highlighted -> cs.secondaryContainer
+            m.read && folder == Folder.INBOX -> cs.surfaceContainerLow
+            else -> cs.surfaceContainer
+        }
+        // A stock Material 3 three-line list item: sender above, subject, then the preview.
+        ListItem(
+            modifier = Modifier.fillMaxWidth().combinedClickable(
+                onClick = { if (selecting) vm.toggleSelect(m.id) else vm.openMail(m) },
+                onLongClick = { haptic.performHapticFeedback(HapticFeedbackType.LongPress); vm.toggleSelect(m.id) },
+            ),
+            colors = ListItemDefaults.colors(containerColor = container),
+            leadingContent = { Avatar(if (outgoing) m.to.firstOrNull() else m.from, selected, modifier = Modifier.clickable { vm.toggleSelect(m.id) }) },
+            overlineContent = {
+                Text(
+                    who, maxLines = 1, overflow = TextOverflow.Ellipsis, color = cs.onSurface,
+                    style = MaterialTheme.typography.titleSmall, fontWeight = if (unread) FontWeight.Bold else FontWeight.Normal,
                 )
-                .padding(horizontal = 16.dp, vertical = 12.dp),
-            verticalAlignment = Alignment.Top,
-        ) {
-            Avatar(if (outgoing) m.to.firstOrNull() else m.from, selected, modifier = Modifier.clickable { vm.toggleSelect(m.id) })
-            Spacer(Modifier.width(16.dp))
-            Column(Modifier.weight(1f)) {
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    Text(
-                        who, Modifier.weight(1f), maxLines = 1, overflow = TextOverflow.Ellipsis,
-                        style = MaterialTheme.typography.titleMedium, fontWeight = if (unread) FontWeight.Bold else FontWeight.Normal,
-                        color = cs.onSurface,
-                    )
-                    Spacer(Modifier.width(8.dp))
+            },
+            headlineContent = {
+                Text(m.subject, maxLines = 1, overflow = TextOverflow.Ellipsis, fontWeight = if (unread) FontWeight.Bold else FontWeight.Normal)
+            },
+            supportingContent = { Text(previewOf(m), maxLines = 1, overflow = TextOverflow.Ellipsis) },
+            trailingContent = {
+                Column(horizontalAlignment = Alignment.End, verticalArrangement = Arrangement.spacedBy(6.dp)) {
                     Text(
                         fmtDate(m.date), style = MaterialTheme.typography.labelMedium,
                         color = if (unread) cs.primary else cs.onSurfaceVariant, fontWeight = if (unread) FontWeight.Bold else FontWeight.Normal,
                     )
+                    Row(horizontalArrangement = Arrangement.spacedBy(6.dp), verticalAlignment = Alignment.CenterVertically) {
+                        if (m.attachmentCount > 0) Icon(Icons.Outlined.AttachFile, "Has attachments", Modifier.size(16.dp), tint = cs.onSurfaceVariant)
+                        if (unread) Badge()
+                    }
                 }
-                Text(
-                    m.subject, maxLines = 1, overflow = TextOverflow.Ellipsis, style = MaterialTheme.typography.bodyMedium,
-                    fontWeight = if (unread) FontWeight.Bold else FontWeight.Normal, color = cs.onSurface,
-                )
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    Text(
-                        previewOf(m), Modifier.weight(1f), maxLines = 1, overflow = TextOverflow.Ellipsis,
-                        style = MaterialTheme.typography.bodyMedium, color = cs.onSurfaceVariant,
-                    )
-                    if (m.attachmentCount > 0) Icon(Icons.Outlined.AttachFile, "Has attachments", Modifier.padding(start = 8.dp).size(16.dp), tint = cs.onSurfaceVariant)
-                    if (unread) Box(Modifier.padding(start = 8.dp).size(8.dp).clip(CircleShape).background(cs.primary))
-                }
-            }
-        }
+            },
+        )
     }
 
     // Gmail-style groups: each day is one card stack, rounded at its top and bottom, flat and thinly separated in between.
