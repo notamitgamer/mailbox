@@ -85,7 +85,7 @@ fun Modifier.sharedMail(id: String): Modifier {
 
 // ---- avatars use the colour scheme's own tonal pairs, so they follow dark mode and Material You ----
 
-private fun avatarColors(cs: ColorScheme, who: String?): Pair<Color, Color> = when (abs(label(who).lowercase().hashCode()) % 6) {
+internal fun avatarColors(cs: ColorScheme, who: String?): Pair<Color, Color> = when (abs(label(who).lowercase().hashCode()) % 6) {
     0 -> cs.primaryContainer to cs.onPrimaryContainer
     1 -> cs.secondaryContainer to cs.onSecondaryContainer
     2 -> cs.tertiaryContainer to cs.onTertiaryContainer

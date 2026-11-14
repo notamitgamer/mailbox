@@ -9,25 +9,17 @@ import android.webkit.WebResourceRequest
 import android.webkit.WebView
 import android.webkit.WebViewClient
 import androidx.compose.animation.AnimatedVisibility
-import androidx.compose.animation.expandVertically
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
-import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.FilledTonalButton
-import androidx.compose.animation.slideOutVertically
-import androidx.compose.animation.slideInVertically
-import androidx.compose.animation.shrinkVertically
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import dev.amit.mail.data.fmtDate
-import androidx.compose.material.icons.outlined.ExpandMore
-import androidx.compose.ui.draw.clip
+import dev.amit.mail.data.initialOf
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.ExperimentalLayoutApi
-import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -55,7 +47,6 @@ import androidx.compose.material.icons.outlined.Reply
 import androidx.compose.material.icons.outlined.ReplyAll
 import androidx.compose.material.icons.outlined.RestoreFromTrash
 import androidx.compose.material3.AlertDialog
-import androidx.compose.material3.AssistChip
 import androidx.compose.material3.Button
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
@@ -77,7 +68,6 @@ import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.key
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberUpdatedState
@@ -108,13 +98,17 @@ fun ReaderScreen(vm: MailViewModel, route: Route.Reader, embedded: Boolean = fal
     val card = cs.surfaceContainerLow
     val dark = cs.surface.luminance() < 0.5f
     val m = vm.reader
+    val (avBg, avFg) = avatarColors(cs, m?.from)
+    val colors = PageColors(
+        cs.surface.toArgb(), card.toArgb(), cs.onSurface.toArgb(), cs.onSurfaceVariant.toArgb(), cs.secondaryContainer.toArgb(),
+        cs.onSecondaryContainer.toArgb(), cs.primary.toArgb(), avBg.toArgb(), avFg.toArgb(), cs.outlineVariant.toArgb(),
+    )
     var menu by remember { mutableStateOf(false) }
     var forward by remember { mutableStateOf(false) }
     var confirmForever by remember { mutableStateOf(false) }
     var fileSheet by remember { mutableStateOf<Int?>(null) }
     var darkView by remember(route.id) { mutableStateOf(true) }
     var headerVisible by remember(route.id) { mutableStateOf(true) }
-    var lastToggle by remember { mutableStateOf(0L) }
     val folder = route.folder
     val ctx = LocalContext.current
 
@@ -199,36 +193,12 @@ fun ReaderScreen(vm: MailViewModel, route: Route.Reader, embedded: Boolean = fal
                 return@Column
             }
             if (vm.readerLoading && !m.hasBody) LinearProgressIndicator(Modifier.fillMaxWidth())
-            AnimatedVisibility(
-                visible = headerVisible,
-                enter = expandVertically() + fadeIn(),
-                exit = shrinkVertically() + fadeOut(),
-            ) {
-                Column {
-                    SubjectRow(m, folder)
-                    if (m.attachments.isNotEmpty() && folder != Folder.DRAFTS) Attachments(m) { fileSheet = it }
-                }
-            }
-            Column(
-                Modifier.weight(1f).fillMaxWidth().padding(horizontal = 12.dp).padding(top = 8.dp, bottom = 8.dp)
-                    .clip(RoundedCornerShape(24.dp)).background(card),
-            ) {
-            SenderRow(m, folder)
             if (m.hasBody) {
                 MailWebView(
-                    m, invert = dark && darkView, surface = card, modifier = Modifier.weight(1f).fillMaxWidth(),
-                    onScroll = { y, oldY ->
-                        val now = System.currentTimeMillis()
-                        if (now - lastToggle > 350) {
-                            val want = when {
-                                y <= 4 -> true
-                                y - oldY > 8 -> false
-                                oldY - y > 8 -> true
-                                else -> headerVisible
-                            }
-                            if (want != headerVisible) { headerVisible = want; lastToggle = now }
-                        }
-                    },
+                    m, folder, invert = dark && darkView, c = colors, modifier = Modifier.weight(1f).fillMaxWidth(),
+                    onAttachment = { fileSheet = it },
+                    // The subject moves up into the top bar once it has scrolled out of the page.
+                    onScroll = { y, _ -> headerVisible = y < (56 * ctx.resources.displayMetrics.density) },
                     onLink = { uri ->
                         if (uri.scheme == "mailto") {
                             vm.openCompose(ComposeArgs(to = splitAddrs(uri.schemeSpecificPart.substringBefore('?'))))
@@ -237,7 +207,6 @@ fun ReaderScreen(vm: MailViewModel, route: Route.Reader, embedded: Boolean = fal
                         }
                     },
                 )
-            }
             }
         }
         }
@@ -271,94 +240,6 @@ private fun GmailMenuItem(text: String, icon: androidx.compose.ui.graphics.vecto
         onClick = onClick,
         contentPadding = PaddingValues(horizontal = 20.dp, vertical = 14.dp),
     )
-}
-
-@Composable
-private fun SubjectRow(m: Mail, folder: Folder) {
-    val cs = MaterialTheme.colorScheme
-    Row(Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 4.dp), verticalAlignment = Alignment.CenterVertically) {
-        Text(
-            m.subject, Modifier.weight(1f, fill = false), style = MaterialTheme.typography.headlineSmall,
-            maxLines = 3, overflow = TextOverflow.Ellipsis, color = cs.onSurface,
-        )
-        if (folder == Folder.INBOX) {
-            Spacer(Modifier.width(10.dp))
-            Box(Modifier.clip(RoundedCornerShape(6.dp)).background(cs.secondaryContainer).padding(horizontal = 8.dp, vertical = 2.dp)) {
-                Text("Inbox", style = MaterialTheme.typography.labelMedium, color = cs.onSecondaryContainer)
-            }
-        }
-    }
-}
-
-/** Gmail-style sender row: avatar, name and time on one line, "to me" with a chevron right under the name. */
-@Composable
-private fun SenderRow(m: Mail, folder: Folder) {
-    val cs = MaterialTheme.colorScheme
-    var expanded by remember(m.id) { mutableStateOf(false) }
-    val outgoing = folder == Folder.SENT
-    val p = parseAddr(m.from)
-    Column(Modifier.fillMaxWidth().padding(start = 16.dp, end = 16.dp, top = 16.dp, bottom = 8.dp)) {
-        Row(verticalAlignment = Alignment.Top) {
-            Avatar(m.from, false, 40.dp)
-            Spacer(Modifier.width(12.dp))
-            Column(Modifier.weight(1f)) {
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    Text(
-                        label(m.from), Modifier.weight(1f, fill = false), style = MaterialTheme.typography.titleMedium,
-                        maxLines = 1, overflow = TextOverflow.Ellipsis, color = cs.onSurface,
-                    )
-                    Spacer(Modifier.width(8.dp))
-                    Text(fmtDate(m.date), style = MaterialTheme.typography.labelMedium, color = cs.onSurfaceVariant, maxLines = 1)
-                }
-                Row(
-                    Modifier.clip(RoundedCornerShape(6.dp)).clickable { expanded = !expanded }.padding(vertical = 2.dp),
-                    verticalAlignment = Alignment.CenterVertically,
-                ) {
-                    Text(
-                        if (outgoing) "to " + (m.to.firstOrNull()?.let { label(it) } ?: "nobody") else "to me",
-                        style = MaterialTheme.typography.bodyMedium, color = cs.onSurfaceVariant, maxLines = 1, overflow = TextOverflow.Ellipsis,
-                    )
-                    Icon(Icons.Outlined.ExpandMore, if (expanded) "Hide details" else "Show details", Modifier.size(18.dp), tint = cs.onSurfaceVariant)
-                }
-            }
-        }
-        if (expanded) {
-            Column(Modifier.padding(top = 8.dp)) {
-                DetailLine("From", if (p.name.isBlank()) p.addr else "${p.name} <${p.addr}>")
-                if (m.to.isNotEmpty()) DetailLine("To", m.to.joinToString(", "))
-                if (m.cc.isNotEmpty()) DetailLine("Cc", m.cc.joinToString(", "))
-                if (m.bcc.isNotEmpty()) DetailLine("Bcc", m.bcc.joinToString(", "))
-                DetailLine("Date", fullDate(m.date))
-            }
-        }
-    }
-}
-
-@Composable
-private fun DetailLine(k: String, v: String) {
-    Row(Modifier.padding(vertical = 2.dp)) {
-        Text(k, Modifier.width(44.dp), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
-        Text(v, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurface)
-    }
-}
-
-@OptIn(ExperimentalLayoutApi::class)
-@Composable
-private fun Attachments(m: Mail, onPick: (Int) -> Unit) {
-    FlowRow(
-        Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp),
-        horizontalArrangement = Arrangement.spacedBy(8.dp),
-    ) {
-        m.attachments.forEachIndexed { n, a ->
-            key(n) {
-                AssistChip(
-                    onClick = { onPick(n) },
-                    label = { Text("${a.filename} \u00B7 ${fmtSize(a.size)}", maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.widthIn(max = 220.dp)) },
-                    leadingIcon = { Icon(Icons.Outlined.AttachFile, null, Modifier.size(18.dp)) },
-                )
-            }
-        }
-    }
 }
 
 /** What to do with one attachment, as a Material 3 bottom sheet. */
@@ -416,15 +297,24 @@ private fun ForwardSheet(onDismiss: () -> Unit, onSend: (List<String>) -> Unit, 
     }
 }
 
-/** The message body in a locked-down WebView: no scripting, links leave the app. */
+/** Colours handed to the mail page (as ARGB), so the header and card match the app theme. */
+private data class PageColors(
+    val surface: Int, val card: Int, val text: Int, val textVar: Int, val chipBg: Int,
+    val chipFg: Int, val link: Int, val avBg: Int, val avFg: Int, val line: Int,
+)
+
+/** The whole message, header included, in one locked-down WebView, so it all scrolls together like Gmail. No scripting; links leave the app. */
 @SuppressLint("SetJavaScriptEnabled")
 @Composable
-private fun MailWebView(m: Mail, invert: Boolean, surface: Color, modifier: Modifier, onScroll: (Int, Int) -> Unit, onLink: (Uri) -> Unit) {
-    val cs = MaterialTheme.colorScheme
-    val bg = surface.toArgb()
+private fun MailWebView(
+    m: Mail, folder: Folder, invert: Boolean, c: PageColors, modifier: Modifier,
+    onScroll: (Int, Int) -> Unit, onLink: (Uri) -> Unit, onAttachment: (Int) -> Unit,
+) {
+    val bg = c.surface
     val onLinkNow by rememberUpdatedState(onLink)
     val onScrollNow by rememberUpdatedState(onScroll)
-    val page = remember(m.id, m.html, m.text, invert, bg) { buildPage(m, invert, bg, cs.onSurface.toArgb(), cs.primary.toArgb()) }
+    val onAttachmentNow by rememberUpdatedState(onAttachment)
+    val page = remember(m.id, m.html, m.text, folder, invert, c) { buildPage(m, folder, invert, c) }
     AndroidView(
         modifier = modifier,
         factory = { ctx ->
@@ -440,7 +330,8 @@ private fun MailWebView(m: Mail, invert: Boolean, surface: Color, modifier: Modi
                 setOnScrollChangeListener { _, _, y, _, oldY -> onScrollNow(y, oldY) }
                 webViewClient = object : WebViewClient() {
                     override fun shouldOverrideUrlLoading(view: WebView, request: WebResourceRequest): Boolean {
-                        onLinkNow(request.url)
+                        val u = request.url
+                        if (u.scheme == "att") u.host?.toIntOrNull()?.let { onAttachmentNow(it) } else onLinkNow(u)
                         return true
                     }
                 }
@@ -463,23 +354,53 @@ private fun MailWebView(m: Mail, invert: Boolean, surface: Color, modifier: Modi
 
 private fun hex(c: Int) = String.format("#%06X", 0xFFFFFF and c)
 
-private fun buildPage(m: Mail, invert: Boolean, surface: Int, text: Int, link: Int): String {
-    val html = m.html
-    val head = "<meta name=\"viewport\" content=\"width=device-width, initial-scale=1\">" +
-        "<style>img{max-width:100%;height:auto}body{word-wrap:break-word;overflow-wrap:anywhere}</style>"
-    if (!html.isNullOrBlank()) {
-        // Dark view: invert the page and turn the hues back, then un-invert pictures. The page background is chosen
-        // so that it inverts to the app's surface colour.
-        val dark = if (invert) {
-            val src = 0xFFFFFF xor (surface and 0xFFFFFF)
-            // The filter goes on <body>: a filter on <html> leaves the canvas background uninverted (light page, light text).
-            "<style>html{background:${hex(surface)}}body{margin:0;padding:8px;min-height:100vh;box-sizing:border-box;background:${hex(src)};filter:invert(1) hue-rotate(180deg)}" +
-                "img,video,picture,svg,canvas,iframe,[style*=\"background-image\"]{filter:invert(1) hue-rotate(180deg)}</style>"
-        } else ""
-        return "<!doctype html><html><head><meta charset=\"utf-8\">$head$dark</head><body>$html<div style=\"height:16px\"></div></body></html>"
+private fun buildPage(m: Mail, folder: Folder, invert: Boolean, c: PageColors): String {
+    val isHtml = !m.html.isNullOrBlank()
+    val flip = isHtml && invert
+    // Dark view: the message block is inverted (hues turned back, pictures un-inverted); its background is chosen so it
+    // inverts to the card colour. The filter sits on that block, not on <html>, so the page background stays right.
+    val msgBg = if (flip) hex(0xFFFFFF xor (c.card and 0xFFFFFF)) else hex(c.card)
+    val inv = "filter:invert(1) hue-rotate(180deg)"
+    val css = "html{background:${hex(c.surface)}}" +
+        "body{margin:0;padding:0 12px 12px;font-family:sans-serif;color:${hex(c.text)};overflow-wrap:anywhere}" +
+        "img{max-width:100%;height:auto}a{color:${hex(c.link)}}" +
+        ".subj{display:flex;align-items:center;flex-wrap:wrap;gap:10px;padding:8px 4px 14px;font-size:24px;line-height:32px;color:${hex(c.text)}}" +
+        ".chip{font-size:12px;line-height:16px;padding:2px 8px;border-radius:6px;background:${hex(c.chipBg)};color:${hex(c.chipFg)}}" +
+        ".top{background:${hex(c.card)};border-radius:24px 24px 0 0;padding:16px 16px 8px}" +
+        ".row{display:flex;align-items:flex-start;gap:12px}" +
+        ".av{width:40px;height:40px;border-radius:50%;background:${hex(c.avBg)};color:${hex(c.avFg)};display:flex;align-items:center;justify-content:center;font-size:18px;flex:none}" +
+        ".who{flex:1;min-width:0}.l1{display:flex;align-items:baseline;gap:8px}" +
+        ".nm{font-size:16px;font-weight:500;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}" +
+        ".tm{font-size:12px;color:${hex(c.textVar)};white-space:nowrap}" +
+        "summary{list-style:none;cursor:pointer;color:${hex(c.textVar)};font-size:14px;padding:2px 0}" +
+        "summary::-webkit-details-marker{display:none}summary:after{content:' \\25BE'}details[open] summary:after{content:' \\25B4'}" +
+        ".det{font-size:13px;line-height:20px;padding:6px 0 0}.det b{display:inline-block;width:44px;font-weight:400;color:${hex(c.textVar)}}" +
+        ".atts{display:flex;flex-wrap:wrap;gap:8px;padding-top:10px}" +
+        ".att{font-size:13px;padding:6px 12px;border:1px solid ${hex(c.line)};border-radius:8px;color:${hex(c.text)};text-decoration:none;max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}" +
+        ".msg{background:$msgBg;border-radius:0 0 24px 24px;padding:8px 8px 24px;${if (flip) inv else ""}}" +
+        (if (flip) ".msg img,.msg video,.msg picture,.msg svg,.msg canvas,.msg iframe,.msg [style*=\"background-image\"]{$inv}" else "") +
+        "pre{white-space:pre-wrap;word-wrap:break-word;font:16px/1.5 sans-serif;margin:0;padding:8px}"
+    val p = parseAddr(m.from)
+    val outgoing = folder == Folder.SENT
+    val who = if (outgoing) "to " + (m.to.firstOrNull()?.let { label(it) } ?: "nobody") else "to me"
+    val details = StringBuilder()
+    details.append("<div><b>From</b>").append(escHtml(if (p.name.isBlank()) p.addr else "${p.name} <${p.addr}>")).append("</div>")
+    if (m.to.isNotEmpty()) details.append("<div><b>To</b>").append(escHtml(m.to.joinToString(", "))).append("</div>")
+    if (m.cc.isNotEmpty()) details.append("<div><b>Cc</b>").append(escHtml(m.cc.joinToString(", "))).append("</div>")
+    if (m.bcc.isNotEmpty()) details.append("<div><b>Bcc</b>").append(escHtml(m.bcc.joinToString(", "))).append("</div>")
+    details.append("<div><b>Date</b>").append(escHtml(fullDate(m.date))).append("</div>")
+    val atts = StringBuilder()
+    if (m.attachments.isNotEmpty() && folder != Folder.DRAFTS) {
+        atts.append("<div class=\"atts\">")
+        m.attachments.forEachIndexed { n, a -> atts.append("<a class=\"att\" href=\"att://$n\">").append(escHtml("${a.filename} \u00B7 ${fmtSize(a.size)}")).append("</a>") }
+        atts.append("</div>")
     }
-    return "<!doctype html><html><head><meta charset=\"utf-8\">$head<style>" +
-        "body{margin:16px;font:16px/1.5 sans-serif;color:${hex(text)};background:transparent}a{color:${hex(link)}}" +
-        "pre{white-space:pre-wrap;word-wrap:break-word;font:inherit;margin:0}</style></head>" +
-        "<body><pre>${escHtml(m.text.orEmpty())}</pre><div style=\"height:16px\"></div></body></html>"
+    val chip = if (folder == Folder.INBOX) "<span class=\"chip\">Inbox</span>" else ""
+    val header = "<div class=\"subj\"><span>${escHtml(m.subject)}</span>$chip</div>" +
+        "<div class=\"top\"><div class=\"row\"><div class=\"av\">${escHtml(initialOf(m.from))}</div><div class=\"who\">" +
+        "<div class=\"l1\"><span class=\"nm\">${escHtml(label(m.from))}</span><span class=\"tm\">${escHtml(fmtDate(m.date))}</span></div>" +
+        "<details><summary>${escHtml(who)}</summary><div class=\"det\">$details</div></details></div></div>$atts</div>"
+    val body = if (isHtml) m.html.orEmpty() else "<pre>${escHtml(m.text.orEmpty())}</pre>"
+    return "<!doctype html><html><head><meta charset=\"utf-8\"><meta name=\"viewport\" content=\"width=device-width, initial-scale=1\">" +
+        "<style>$css</style></head><body>$header<div class=\"msg\">$body</div></body></html>"
 }
