@@ -19,6 +19,10 @@ import androidx.compose.animation.slideInVertically
 import androidx.compose.animation.shrinkVertically
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import dev.amit.mail.data.fmtDate
+import androidx.compose.material.icons.outlined.ExpandMore
+import androidx.compose.ui.draw.clip
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -101,6 +105,7 @@ import dev.amit.mail.data.parseAddr
 @Composable
 fun ReaderScreen(vm: MailViewModel, route: Route.Reader, embedded: Boolean = false) {
     val cs = MaterialTheme.colorScheme
+    val card = cs.surfaceContainerLow
     val dark = cs.surface.luminance() < 0.5f
     val m = vm.reader
     var menu by remember { mutableStateOf(false) }
@@ -129,8 +134,8 @@ fun ReaderScreen(vm: MailViewModel, route: Route.Reader, embedded: Boolean = fal
                     if (m != null) {
                         when (folder) {
                             Folder.INBOX -> {
-                                IconButton(onClick = { vm.replyTo(false) }) { Icon(Icons.Outlined.Reply, "Reply") }
                                 IconButton(onClick = { vm.deleteOpen() }) { Icon(Icons.Outlined.Delete, "Delete") }
+                                IconButton(onClick = { vm.markUnreadOpen() }) { Icon(Icons.Outlined.MarkEmailUnread, "Mark as unread") }
                             }
                             Folder.SENT -> IconButton(onClick = { vm.deleteOpen() }) { Icon(Icons.Outlined.Delete, "Delete") }
                             Folder.TRASH -> {
@@ -152,15 +157,9 @@ fun ReaderScreen(vm: MailViewModel, route: Route.Reader, embedded: Boolean = fal
                                     onClick = { menu = false; forward = true },
                                 )
                             }
-                            if (folder == Folder.INBOX) {
-                                DropdownMenuItem(
-                                    text = { Text("Mark as unread") }, leadingIcon = { Icon(Icons.Outlined.MarkEmailUnread, null) },
-                                    onClick = { menu = false; vm.markUnreadOpen() },
-                                )
-                            }
                             if (dark) {
                                 DropdownMenuItem(
-                                    text = { Text(if (darkView) "Show original colours" else "Use dark view") },
+                                    text = { Text(if (darkView) "View in light theme" else "View in dark theme") },
                                     leadingIcon = { Icon(if (darkView) Icons.Outlined.LightMode else Icons.Outlined.DarkMode, null) },
                                     onClick = { menu = false; darkView = !darkView },
                                 )
@@ -181,11 +180,11 @@ fun ReaderScreen(vm: MailViewModel, route: Route.Reader, embedded: Boolean = fal
                     horizontalArrangement = Arrangement.spacedBy(12.dp),
                 ) {
                     if (folder == Folder.INBOX) {
-                        FilledTonalButton(onClick = { vm.replyTo(false) }, Modifier.weight(1f).height(48.dp)) {
+                        FilledTonalButton(onClick = { vm.replyTo(false) }, Modifier.weight(1f).height(52.dp)) {
                             Icon(Icons.Outlined.Reply, null, Modifier.size(18.dp)); Spacer(Modifier.width(8.dp)); Text("Reply")
                         }
                     }
-                    FilledTonalButton(onClick = { forward = true }, Modifier.weight(1f).height(48.dp)) {
+                    FilledTonalButton(onClick = { forward = true }, Modifier.weight(1f).height(52.dp)) {
                         Icon(Icons.Outlined.Forward, null, Modifier.size(18.dp)); Spacer(Modifier.width(8.dp)); Text("Forward")
                     }
                 }
@@ -205,14 +204,18 @@ fun ReaderScreen(vm: MailViewModel, route: Route.Reader, embedded: Boolean = fal
                 exit = shrinkVertically() + fadeOut(),
             ) {
                 Column {
-                    Header(m, folder)
+                    SubjectRow(m, folder)
                     if (m.attachments.isNotEmpty() && folder != Folder.DRAFTS) Attachments(m) { fileSheet = it }
                 }
             }
-            HorizontalDivider(Modifier.padding(top = 8.dp))
+            Column(
+                Modifier.weight(1f).fillMaxWidth().padding(horizontal = 12.dp).padding(top = 8.dp, bottom = 8.dp)
+                    .clip(RoundedCornerShape(24.dp)).background(card),
+            ) {
+            SenderRow(m, folder)
             if (m.hasBody) {
                 MailWebView(
-                    m, invert = dark && darkView, modifier = Modifier.weight(1f).fillMaxWidth(),
+                    m, invert = dark && darkView, surface = card, modifier = Modifier.weight(1f).fillMaxWidth(),
                     onScroll = { y, oldY ->
                         val now = System.currentTimeMillis()
                         if (now - lastToggle > 350) {
@@ -233,6 +236,7 @@ fun ReaderScreen(vm: MailViewModel, route: Route.Reader, embedded: Boolean = fal
                         }
                     },
                 )
+            }
             }
         }
         }
@@ -259,33 +263,61 @@ fun ReaderScreen(vm: MailViewModel, route: Route.Reader, embedded: Boolean = fal
 }
 
 @Composable
-private fun Header(m: Mail, folder: Folder) {
+private fun SubjectRow(m: Mail, folder: Folder) {
+    val cs = MaterialTheme.colorScheme
+    Row(Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 4.dp), verticalAlignment = Alignment.CenterVertically) {
+        Text(
+            m.subject, Modifier.weight(1f, fill = false), style = MaterialTheme.typography.headlineSmall,
+            maxLines = 3, overflow = TextOverflow.Ellipsis, color = cs.onSurface,
+        )
+        if (folder == Folder.INBOX) {
+            Spacer(Modifier.width(10.dp))
+            Box(Modifier.clip(RoundedCornerShape(6.dp)).background(cs.secondaryContainer).padding(horizontal = 8.dp, vertical = 2.dp)) {
+                Text("Inbox", style = MaterialTheme.typography.labelMedium, color = cs.onSecondaryContainer)
+            }
+        }
+    }
+}
+
+/** Gmail-style sender row: avatar, name and time on one line, "to me" with a chevron right under the name. */
+@Composable
+private fun SenderRow(m: Mail, folder: Folder) {
     val cs = MaterialTheme.colorScheme
     var expanded by remember(m.id) { mutableStateOf(false) }
     val outgoing = folder == Folder.SENT
     val p = parseAddr(m.from)
-    Column(Modifier.padding(horizontal = 16.dp)) {
-        Text(m.subject, style = MaterialTheme.typography.headlineSmall, maxLines = 3, overflow = TextOverflow.Ellipsis, color = cs.onSurface)
-        Row(Modifier.padding(top = 12.dp), verticalAlignment = Alignment.CenterVertically) {
+    Column(Modifier.fillMaxWidth().padding(start = 16.dp, end = 16.dp, top = 16.dp, bottom = 8.dp)) {
+        Row(verticalAlignment = Alignment.Top) {
             Avatar(m.from, false, 40.dp)
             Spacer(Modifier.width(12.dp))
             Column(Modifier.weight(1f)) {
-                Text(label(m.from), style = MaterialTheme.typography.titleMedium, maxLines = 1, overflow = TextOverflow.Ellipsis, color = cs.onSurface)
-                TextButton(onClick = { expanded = !expanded }, contentPadding = PaddingValues(0.dp)) {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Text(
+                        label(m.from), Modifier.weight(1f, fill = false), style = MaterialTheme.typography.titleMedium,
+                        maxLines = 1, overflow = TextOverflow.Ellipsis, color = cs.onSurface,
+                    )
+                    Spacer(Modifier.width(8.dp))
+                    Text(fmtDate(m.date), style = MaterialTheme.typography.labelMedium, color = cs.onSurfaceVariant, maxLines = 1)
+                }
+                Row(
+                    Modifier.clip(RoundedCornerShape(6.dp)).clickable { expanded = !expanded }.padding(vertical = 2.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
                     Text(
                         if (outgoing) "to " + (m.to.firstOrNull()?.let { label(it) } ?: "nobody") else "to me",
-                        style = MaterialTheme.typography.bodySmall, color = cs.onSurfaceVariant,
+                        style = MaterialTheme.typography.bodyMedium, color = cs.onSurfaceVariant, maxLines = 1, overflow = TextOverflow.Ellipsis,
                     )
+                    Icon(Icons.Outlined.ExpandMore, if (expanded) "Hide details" else "Show details", Modifier.size(18.dp), tint = cs.onSurfaceVariant)
                 }
             }
-            Text(fullDate(m.date), style = MaterialTheme.typography.labelMedium, color = cs.onSurfaceVariant)
         }
         if (expanded) {
-            Column(Modifier.padding(top = 4.dp)) {
+            Column(Modifier.padding(top = 8.dp)) {
                 DetailLine("From", if (p.name.isBlank()) p.addr else "${p.name} <${p.addr}>")
                 if (m.to.isNotEmpty()) DetailLine("To", m.to.joinToString(", "))
                 if (m.cc.isNotEmpty()) DetailLine("Cc", m.cc.joinToString(", "))
                 if (m.bcc.isNotEmpty()) DetailLine("Bcc", m.bcc.joinToString(", "))
+                DetailLine("Date", fullDate(m.date))
             }
         }
     }
@@ -294,7 +326,7 @@ private fun Header(m: Mail, folder: Folder) {
 @Composable
 private fun DetailLine(k: String, v: String) {
     Row(Modifier.padding(vertical = 2.dp)) {
-        Text(k, Modifier.width(40.dp), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+        Text(k, Modifier.width(44.dp), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
         Text(v, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurface)
     }
 }
@@ -376,9 +408,9 @@ private fun ForwardSheet(onDismiss: () -> Unit, onSend: (List<String>) -> Unit, 
 /** The message body in a locked-down WebView: no scripting, links leave the app. */
 @SuppressLint("SetJavaScriptEnabled")
 @Composable
-private fun MailWebView(m: Mail, invert: Boolean, modifier: Modifier, onScroll: (Int, Int) -> Unit, onLink: (Uri) -> Unit) {
+private fun MailWebView(m: Mail, invert: Boolean, surface: Color, modifier: Modifier, onScroll: (Int, Int) -> Unit, onLink: (Uri) -> Unit) {
     val cs = MaterialTheme.colorScheme
-    val bg = cs.surface.toArgb()
+    val bg = surface.toArgb()
     val onLinkNow by rememberUpdatedState(onLink)
     val onScrollNow by rememberUpdatedState(onScroll)
     val page = remember(m.id, m.html, m.text, invert, bg) { buildPage(m, invert, bg, cs.onSurface.toArgb(), cs.primary.toArgb()) }
