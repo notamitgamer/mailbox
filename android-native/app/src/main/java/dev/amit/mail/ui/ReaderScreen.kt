@@ -354,30 +354,47 @@ private fun MailWebView(
 
 private fun hex(c: Int) = String.format("#%06X", 0xFFFFFF and c)
 
+/** What to paint so that invert(1) followed by hue-rotate(180deg) lands exactly on colour [c] (no tint shift). */
+private fun preImage(c: Int): String {
+    val r = ((c shr 16) and 255) / 255.0
+    val g = ((c shr 8) and 255) / 255.0
+    val b = (c and 255) / 255.0
+    fun f(x: Double) = (255 * (1 - x).coerceIn(0.0, 1.0)).toInt()
+    val hr = -0.574 * r + 1.430 * g + 0.144 * b
+    val hg = 0.426 * r + 0.430 * g + 0.144 * b
+    val hb = 0.426 * r + 1.430 * g - 0.856 * b
+    return String.format("#%02X%02X%02X", f(hr), f(hg), f(hb))
+}
+
 private fun buildPage(m: Mail, folder: Folder, invert: Boolean, c: PageColors): String {
     val isHtml = !m.html.isNullOrBlank()
     val flip = isHtml && invert
     // Dark view: the message block is inverted (hues turned back, pictures un-inverted); its background is chosen so it
     // inverts to the card colour. The filter sits on that block, not on <html>, so the page background stays right.
-    val msgBg = if (flip) hex(0xFFFFFF xor (c.card and 0xFFFFFF)) else hex(c.card)
+    val msgBg = if (flip) preImage(c.card) else hex(c.card)
     val inv = "filter:invert(1) hue-rotate(180deg)"
+    // The email brings its own <style> (body margins, backgrounds, colours); "html body" + !important keeps the page frame ours,
+    // and every header colour is set explicitly instead of being inherited from <body>.
     val css = "html{background:${hex(c.surface)}}" +
-        "body{margin:0;padding:0 12px 12px;font-family:sans-serif;color:${hex(c.text)};overflow-wrap:anywhere}" +
-        "img{max-width:100%;height:auto}a{color:${hex(c.link)}}" +
-        ".subj{display:flex;align-items:center;flex-wrap:wrap;gap:10px;padding:8px 4px 14px;font-size:24px;line-height:32px;color:${hex(c.text)}}" +
-        ".chip{font-size:12px;line-height:16px;padding:2px 8px;border-radius:6px;background:${hex(c.chipBg)};color:${hex(c.chipFg)}}" +
+        "html body{margin:0!important;padding:0!important;background:${hex(c.surface)}!important;font-family:sans-serif}" +
+        "img{max-width:100%;height:auto}" +
+        ".page{padding:0 12px 12px}" +
+        ".subj{padding:8px 4px 14px;font-size:24px;line-height:32px;color:${hex(c.text)}}" +
+        ".chip{display:inline-block;vertical-align:middle;margin-left:10px;font-size:12px;line-height:16px;padding:2px 8px;border-radius:6px;background:${hex(c.chipBg)};color:${hex(c.chipFg)}}" +
         ".top{background:${hex(c.card)};border-radius:24px 24px 0 0;padding:16px 16px 8px}" +
         ".row{display:flex;align-items:flex-start;gap:12px}" +
         ".av{width:40px;height:40px;border-radius:50%;background:${hex(c.avBg)};color:${hex(c.avFg)};display:flex;align-items:center;justify-content:center;font-size:18px;flex:none}" +
         ".who{flex:1;min-width:0}.l1{display:flex;align-items:baseline;gap:8px}" +
-        ".nm{font-size:16px;font-weight:500;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}" +
+        ".nm{font-size:16px;font-weight:500;color:${hex(c.text)};overflow:hidden;text-overflow:ellipsis;white-space:nowrap}" +
         ".tm{font-size:12px;color:${hex(c.textVar)};white-space:nowrap}" +
         "summary{list-style:none;cursor:pointer;color:${hex(c.textVar)};font-size:14px;padding:2px 0}" +
         "summary::-webkit-details-marker{display:none}summary:after{content:' \\25BE'}details[open] summary:after{content:' \\25B4'}" +
-        ".det{font-size:13px;line-height:20px;padding:6px 0 0}.det b{display:inline-block;width:44px;font-weight:400;color:${hex(c.textVar)}}" +
+        ".det{font-size:13px;line-height:20px;padding:6px 0 0;color:${hex(c.text)};overflow-wrap:anywhere}.det b{display:inline-block;width:44px;font-weight:400;color:${hex(c.textVar)}}" +
         ".atts{display:flex;flex-wrap:wrap;gap:8px;padding-top:10px}" +
         ".att{font-size:13px;padding:6px 12px;border:1px solid ${hex(c.line)};border-radius:8px;color:${hex(c.text)};text-decoration:none;max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}" +
-        ".msg{background:$msgBg;border-radius:0 0 24px 24px;padding:8px 8px 24px;${if (flip) inv else ""}}" +
+        // Wide newsletter layouts scroll sideways inside the card instead of pushing the whole page wider.
+        ".msg{background:$msgBg;border-radius:0 0 24px 24px;padding:8px 8px 24px;overflow-x:auto;overflow-wrap:anywhere;color:${if (flip) "#000000" else hex(c.text)};${if (flip) inv else ""}}" +
+        (if (isHtml) "" else ".msg a{color:${hex(c.link)}}") +
         (if (flip) ".msg img,.msg video,.msg picture,.msg svg,.msg canvas,.msg iframe,.msg [style*=\"background-image\"]{$inv}" else "") +
         "pre{white-space:pre-wrap;word-wrap:break-word;font:16px/1.5 sans-serif;margin:0;padding:8px}"
     val p = parseAddr(m.from)
@@ -396,11 +413,11 @@ private fun buildPage(m: Mail, folder: Folder, invert: Boolean, c: PageColors): 
         atts.append("</div>")
     }
     val chip = if (folder == Folder.INBOX) "<span class=\"chip\">Inbox</span>" else ""
-    val header = "<div class=\"subj\"><span>${escHtml(m.subject)}</span>$chip</div>" +
+    val header = "<div class=\"subj\">${escHtml(m.subject)}$chip</div>" +
         "<div class=\"top\"><div class=\"row\"><div class=\"av\">${escHtml(initialOf(m.from))}</div><div class=\"who\">" +
         "<div class=\"l1\"><span class=\"nm\">${escHtml(label(m.from))}</span><span class=\"tm\">${escHtml(fmtDate(m.date))}</span></div>" +
         "<details><summary>${escHtml(who)}</summary><div class=\"det\">$details</div></details></div></div>$atts</div>"
     val body = if (isHtml) m.html.orEmpty() else "<pre>${escHtml(m.text.orEmpty())}</pre>"
     return "<!doctype html><html><head><meta charset=\"utf-8\"><meta name=\"viewport\" content=\"width=device-width, initial-scale=1\">" +
-        "<style>$css</style></head><body>$header<div class=\"msg\">$body</div></body></html>"
+        "<style>$css</style></head><body><div class=\"page\">$header<div class=\"msg\">$body</div></div></body></html>"
 }
