@@ -144,25 +144,26 @@ fun ReaderScreen(vm: MailViewModel, route: Route.Reader, embedded: Boolean = fal
                             }
                             Folder.DRAFTS -> {}
                         }
-                        OverflowMenu(menu, { menu = it }) {
-                            if (folder == Folder.INBOX) {
-                                DropdownMenuItem(
-                                    text = { Text("Reply all") }, leadingIcon = { Icon(Icons.Outlined.ReplyAll, null) },
-                                    onClick = { menu = false; vm.replyTo(true) },
-                                )
-                            }
-                            if (folder != Folder.TRASH) {
-                                DropdownMenuItem(
-                                    text = { Text("Forward") }, leadingIcon = { Icon(Icons.Outlined.Forward, null) },
-                                    onClick = { menu = false; forward = true },
-                                )
-                            }
-                            if (dark) {
-                                DropdownMenuItem(
-                                    text = { Text(if (darkView) "View in light theme" else "View in dark theme") },
-                                    leadingIcon = { Icon(if (darkView) Icons.Outlined.LightMode else Icons.Outlined.DarkMode, null) },
-                                    onClick = { menu = false; darkView = !darkView },
-                                )
+                        // Gmail-style menu: roomy rows, outlined icons, groups split by dividers.
+                        Box {
+                            IconButton(onClick = { menu = true }) { Icon(Icons.Outlined.MoreVert, "More options") }
+                            DropdownMenu(
+                                expanded = menu, onDismissRequest = { menu = false },
+                                shape = RoundedCornerShape(12.dp), containerColor = cs.surfaceContainer,
+                                tonalElevation = 0.dp, shadowElevation = 8.dp,
+                                modifier = Modifier.widthIn(min = 280.dp),
+                            ) {
+                                val canReply = folder == Folder.INBOX
+                                val canForward = folder != Folder.TRASH
+                                if (canReply) GmailMenuItem("Reply all", Icons.Outlined.ReplyAll) { menu = false; vm.replyTo(true) }
+                                if (canForward) GmailMenuItem("Forward", Icons.Outlined.Forward) { menu = false; forward = true }
+                                if (dark) {
+                                    if (canReply || canForward) HorizontalDivider(Modifier.padding(vertical = 6.dp), color = cs.outlineVariant)
+                                    GmailMenuItem(
+                                        if (darkView) "View in light theme" else "View in dark theme",
+                                        if (darkView) Icons.Outlined.LightMode else Icons.Outlined.DarkMode,
+                                    ) { menu = false; darkView = !darkView }
+                                }
                             }
                         }
                     }
@@ -260,6 +261,16 @@ fun ReaderScreen(vm: MailViewModel, route: Route.Reader, embedded: Boolean = fal
             dismissButton = { TextButton(onClick = { confirmForever = false }) { Text("Cancel") } },
         )
     }
+}
+
+@Composable
+private fun GmailMenuItem(text: String, icon: androidx.compose.ui.graphics.vector.ImageVector, onClick: () -> Unit) {
+    DropdownMenuItem(
+        text = { Text(text, style = MaterialTheme.typography.bodyLarge) },
+        leadingIcon = { Icon(icon, null, Modifier.size(24.dp)) },
+        onClick = onClick,
+        contentPadding = PaddingValues(horizontal = 20.dp, vertical = 14.dp),
+    )
 }
 
 @Composable
